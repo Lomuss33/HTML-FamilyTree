@@ -1,0 +1,334 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>my-family-chart</title>
+  <script src="https://unpkg.com/d3@7"></script>
+  <script type="module" src="https://unpkg.com/family-chart@0.9.0"></script>
+  <link rel="stylesheet" href="https://unpkg.com/family-chart@0.9.0/dist/styles/family-chart.css">
+  <style> body { font-family: 'Arial', sans-serif; } </style>
+</head>
+<body>
+<div id="FamilyChart" class="f3" style="width:100%;height:900px;margin:auto;background-color:rgb(33,33,33);color:#fff;"></div>
+<script type="module">
+
+create(data())
+
+function create(data) {
+  const f3Chart = f3.createChart('#FamilyChart', data)
+    .setTransitionTime(1000)
+    .setCardXSpacing(250)
+    .setCardYSpacing(150)
+    .setSingleParentEmptyCard(true, {label: 'ADD'})
+    .setShowSiblingsOfMain(false)
+    .setOrientationVertical()
+
+  const f3Card = f3Chart.setCardHtml()
+    .setCardDisplay([["first name","last name"],["birthday"]])
+    .setCardDim(null)
+    .setMiniTree(true)
+    .setStyle('imageRect')
+    .setOnHoverPathToMain()
+
+  
+  const f3EditTree = f3Chart.editTree()
+    .fixed(true)
+    .setFields(["first name","last name","birthday","avatar"])
+    .setEditFirst(true)
+    .setCardClickOpen(f3Card)
+  
+  f3EditTree.setEdit()
+
+  f3Chart.updateTree({initial: true})
+  f3EditTree.open(f3Chart.getMainDatum())
+
+  f3Chart.updateTree({initial: true})
+}
+
+function data() {
+  return [
+    {
+      "id": "0",
+      "rels": {
+        "parents": [
+          "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+          "17379053-a9f4-4637-ac96-e8ef6ec4f64f"
+        ]
+      },
+      "data": {
+        "first name": "Name",
+        "last name": "Surname",
+        "birthday": 1970,
+        "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg",
+        "gender": "M"
+      }
+    },
+    {
+      "id": "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+      "data": {
+        "gender": "M",
+        "first name": "Željko",
+        "last name": "Musić",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "parents": [
+          "bd408427-5def-40bd-a874-8d2218d946d3",
+          "09f4832b-7cd9-4794-923c-2706ac34384b"
+        ],
+        "children": [
+          "0",
+          "1c3f5c4f-ef87-40b2-9715-e7734705c2ad",
+          "b6951ec7-dff1-4281-8030-79699f89d2b5"
+        ],
+        "spouses": [
+          "17379053-a9f4-4637-ac96-e8ef6ec4f64f"
+        ]
+      }
+    },
+    {
+      "id": "17379053-a9f4-4637-ac96-e8ef6ec4f64f",
+      "data": {
+        "gender": "F",
+        "first name": "Ana",
+        "last name": "Bagarič",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "parents": [
+          "9d1d2211-04e5-4653-bdfa-377e569756db",
+          "fec34b29-1686-47a3-a57e-dda0256c012b"
+        ],
+        "children": [
+          "0",
+          "1c3f5c4f-ef87-40b2-9715-e7734705c2ad",
+          "b6951ec7-dff1-4281-8030-79699f89d2b5"
+        ],
+        "spouses": [
+          "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3"
+        ]
+      }
+    },
+    {
+      "id": "1c3f5c4f-ef87-40b2-9715-e7734705c2ad",
+      "data": {
+        "gender": "F",
+        "first name": "Matija",
+        "last name": "Musić",
+        "birthday": "1999",
+        "avatar": ""
+      },
+      "rels": {
+        "parents": [
+          "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+          "17379053-a9f4-4637-ac96-e8ef6ec4f64f"
+        ]
+      }
+    },
+    {
+      "id": "b6951ec7-dff1-4281-8030-79699f89d2b5",
+      "data": {
+        "gender": "F",
+        "first name": "Ivana",
+        "last name": "Musić",
+        "birthday": "2005",
+        "avatar": ""
+      },
+      "rels": {
+        "parents": [
+          "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+          "17379053-a9f4-4637-ac96-e8ef6ec4f64f"
+        ]
+      }
+    },
+    {
+      "id": "9d1d2211-04e5-4653-bdfa-377e569756db",
+      "data": {
+        "gender": "M",
+        "first name": "Frano",
+        "last name": "Bagarić",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "children": [
+          "17379053-a9f4-4637-ac96-e8ef6ec4f64f",
+          "20f2e52f-c378-41fc-990c-4477d477dff2",
+          "cc55fb39-11c6-4b88-bc1e-d1ecf0f5dcbb",
+          "ca7b0244-0d27-4915-a30f-8bd754206800",
+          "7b32403d-8253-4366-855a-c2c38d4212ca",
+          "39bfa536-0cb9-4918-9492-af0971897f4a"
+        ],
+        "spouses": [
+          "fec34b29-1686-47a3-a57e-dda0256c012b"
+        ]
+      }
+    },
+    {
+      "id": "fec34b29-1686-47a3-a57e-dda0256c012b",
+      "data": {
+        "gender": "F",
+        "first name": "Matija",
+        "last name": "",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "children": [
+          "17379053-a9f4-4637-ac96-e8ef6ec4f64f",
+          "20f2e52f-c378-41fc-990c-4477d477dff2",
+          "cc55fb39-11c6-4b88-bc1e-d1ecf0f5dcbb",
+          "ca7b0244-0d27-4915-a30f-8bd754206800",
+          "7b32403d-8253-4366-855a-c2c38d4212ca",
+          "39bfa536-0cb9-4918-9492-af0971897f4a"
+        ],
+        "spouses": [
+          "9d1d2211-04e5-4653-bdfa-377e569756db"
+        ]
+      }
+    },
+    {
+      "id": "bd408427-5def-40bd-a874-8d2218d946d3",
+      "data": {
+        "gender": "M",
+        "first name": "Lovre",
+        "last name": "Musić",
+        "birthday": "1945",
+        "avatar": ""
+      },
+      "rels": {
+        "children": [
+          "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+          "977c405a-8b9b-49ad-b72a-e5c282528019"
+        ],
+        "spouses": [
+          "09f4832b-7cd9-4794-923c-2706ac34384b"
+        ]
+      }
+    },
+    {
+      "id": "09f4832b-7cd9-4794-923c-2706ac34384b",
+      "data": {
+        "gender": "F",
+        "first name": "Iva",
+        "last name": "Ćurčić",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "children": [
+          "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+          "977c405a-8b9b-49ad-b72a-e5c282528019"
+        ],
+        "spouses": [
+          "bd408427-5def-40bd-a874-8d2218d946d3"
+        ]
+      }
+    },
+    {
+      "id": "977c405a-8b9b-49ad-b72a-e5c282528019",
+      "data": {
+        "gender": "F",
+        "first name": "Marija",
+        "last name": "Musić",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "parents": [
+          "09f4832b-7cd9-4794-923c-2706ac34384b",
+          "bd408427-5def-40bd-a874-8d2218d946d3"
+        ]
+      }
+    },
+    {
+      "id": "20f2e52f-c378-41fc-990c-4477d477dff2",
+      "data": {
+        "gender": "F",
+        "first name": "Stana",
+        "last name": "Bagarić",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "parents": [
+          "fec34b29-1686-47a3-a57e-dda0256c012b",
+          "9d1d2211-04e5-4653-bdfa-377e569756db"
+        ]
+      }
+    },
+    {
+      "id": "cc55fb39-11c6-4b88-bc1e-d1ecf0f5dcbb",
+      "data": {
+        "gender": "F",
+        "first name": "Ljubica",
+        "last name": "Bagarić",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "parents": [
+          "fec34b29-1686-47a3-a57e-dda0256c012b",
+          "9d1d2211-04e5-4653-bdfa-377e569756db"
+        ]
+      }
+    },
+    {
+      "id": "ca7b0244-0d27-4915-a30f-8bd754206800",
+      "data": {
+        "gender": "F",
+        "first name": "Ruža",
+        "last name": "Bagarić",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "parents": [
+          "fec34b29-1686-47a3-a57e-dda0256c012b",
+          "9d1d2211-04e5-4653-bdfa-377e569756db"
+        ]
+      }
+    },
+    {
+      "id": "7b32403d-8253-4366-855a-c2c38d4212ca",
+      "data": {
+        "gender": "F",
+        "first name": "Anđa",
+        "last name": "Bagarić",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "parents": [
+          "fec34b29-1686-47a3-a57e-dda0256c012b",
+          "9d1d2211-04e5-4653-bdfa-377e569756db"
+        ]
+      }
+    },
+    {
+      "id": "39bfa536-0cb9-4918-9492-af0971897f4a",
+      "data": {
+        "gender": "F",
+        "first name": "Božica",
+        "last name": "Bagarić",
+        "birthday": "",
+        "avatar": ""
+      },
+      "rels": {
+        "parents": [
+          "fec34b29-1686-47a3-a57e-dda0256c012b",
+          "9d1d2211-04e5-4653-bdfa-377e569756db"
+        ]
+      }
+    }
+  ]
+}
+
+
+</script>
+</body>
+</html>
