@@ -1,0 +1,471 @@
+const SESSION_KEY = "family-tree-session-v1";
+const PAYLOAD_URL = "./data/family.enc.json";
+
+const lockScreen = document.getElementById("lock-screen");
+const treeShell = document.getElementById("tree-shell");
+const unlockForm = document.getElementById("unlock-form");
+const passwordInput = document.getElementById("password");
+const unlockButton = document.getElementById("unlock-button");
+const statusMessage = document.getElementById("status-message");
+const clearSessionButton = document.getElementById("clear-session");
+const chartRoot = document.getElementById("family-chart");
+const treeStatus = document.getElementById("tree-status");
+const editButton = document.getElementById("edit-button");
+const discardButton = document.getElementById("discard-button");
+const saveButton = document.getElementById("save-button");
+
+const state = {
+  currentNodes: [],
+  savedNodes: [],
+  currentPassword: null,
+  isEditing: false,
+  isSaving: false,
+  localSaveAvailable: false,
+  localSaveChecked: false,
+  payloadConfig: {
+    iterations: 250000,
+    hash: "SHA-256"
+  },
+  editor: null,
+  openEditorOnRender: false
+};
+
+const isLocalRuntime = isLocalEditingRuntime();
+
+let encryptedPayloadPromise;
+
+window.addEventListener("DOMContentLoaded", () => {
+  encryptedPayloadPromise = loadPayload();
+  void detectLocalSaveSupport();
+  attemptSessionRestore();
+
+  unlockForm.addEventListener("submit", handleUnlock);
+  clearSessionButton.addEventListener("click", clearSession);
+  editButton.addEventListener("click", enterEditMode);
+  discardButton.addEventListener("click", discardChanges);
+  saveButton.addEventListener("click", saveChanges);
+  syncToolbar();
+});
+
+async function loadPayload() {
+  const response = await fetch(PAYLOAD_URL, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error("Unable to load encrypted family data.");
+  }
+  const payload = await response.json();
+  state.payloadConfig = {
+    iterations: payload.iterations ?? state.payloadConfig.iterations,
+    hash: payload.hash ?? state.payloadConfig.hash
+  };
+  return payload;
+}
+
+async function detectLocalSaveSupport() {
+  if (!isLocalRuntime || location.protocol === "file:") {
+    state.localSaveChecked = true;
+    syncToolbar();
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/status", { cache: "no-store" });
+    state.localSaveAvailable = response.ok;
+  } catch (error) {
+    console.error(error);
+    state.localSaveAvailable = false;
+  } finally {
+    state.localSaveChecked = true;
+    syncToolbar();
+  }
+}
+
+async function handleUnlock(event) {
+  event.preventDefault();
+
+  const password = passwordInput.value;
+  if (!password) {
+    setStatus("Enter the shared password to continue.", true);
+    return;
+  }
+
+  unlockButton.disabled = true;
+  setStatus("Decrypting in your browser...");
+
+  try {
+    const nodes = await unlock(password);
+    state.currentPassword = password;
+    setNodes(nodes);
+    passwordInput.value = "";
+    showTree();
+    renderTree(state.currentNodes);
+    setStatus("");
+    syncToolbar();
+  } catch (error) {
+    console.error(error);
+    setStatus("Unable to unlock. Check the password and try again.", true);
+  } finally {
+    unlockButton.disabled = false;
+  }
+}
+
+function attemptSessionRestore() {
+  const cached = sessionStorage.getItem(SESSION_KEY);
+  if (!cached) {
+    return;
+  }
+
+  try {
+    const nodes = JSON.parse(cached);
+    setNodes(nodes);
+    showTree();
+    renderTree(state.currentNodes);
+    syncToolbar();
+  } catch (error) {
+    console.error(error);
+    clearSession();
+  }
+}
+
+async function unlock(password) {
+  const payload = await encryptedPayloadPromise;
+  const textEncoder = new TextEncoder();
+  const passwordKey = await crypto.subtle.importKey(
+    "raw",
+    textEncoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: fromBase64(payload.salt),
+      iterations: payload.iterations,
+      hash: payload.hash
+    },
+    passwordKey,
+    {
+      name: "AES-GCM",
+      length: 256
+    },
+    false,
+    ["decrypt"]
+  );
+
+  const decrypted = await crypto.subtle.decrypt(
+    {
+      name: "AES-GCM",
+      iv: fromBase64(payload.iv)
+    },
+    key,
+    fromBase64(payload.ciphertext)
+  );
+
+  const json = new TextDecoder().decode(decrypted);
+  const nodes = JSON.parse(json);
+  if (!Array.isArray(nodes)) {
+    throw new Error("Decrypted payload is not a family node array.");
+  }
+  return nodes;
+}
+
+function renderTree(nodes) {
+  chartRoot.innerHTML = "";
+  state.editor = null;
+
+  const chart = f3.createChart("#family-chart", nodes)
+    .setTransitionTime(600)
+    .setCardXSpacing(240)
+    .setCardYSpacing(140)
+    .setShowSiblingsOfMain(false)
+    .setOrientationVertical();
+
+  const card = chart.setCardHtml()
+    .setCardDisplay([
+      ["first name", "last name"],
+      ["birthday"]
+    ])
+    .setMiniTree(true)
+    .setStyle("imageRect")
+    .setCardDim(null)
+    .setOnHoverPathToMain();
+
+  if (state.isEditing && isLocalRuntime) {
+    const editor = chart.editTree()
+      .fixed(true)
+      .setFields(["first name", "last name", "birthday", "avatar"])
+      .setCardClickOpen(card)
+      .setEditFirst(true)
+      .setOnChange(() => {
+        state.currentNodes = editor.exportData();
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(state.currentNodes));
+        syncToolbar("Editing locally. Save when you are ready.");
+      })
+      .setEdit();
+
+    state.editor = editor;
+  }
+
+  chart.updateTree({ initial: true });
+
+  if (state.editor && state.openEditorOnRender) {
+    state.openEditorOnRender = false;
+    state.editor.openFormWithId();
+  }
+}
+
+function showTree() {
+  lockScreen.classList.add("is-hidden");
+  treeShell.classList.remove("is-hidden");
+  syncToolbar();
+}
+
+function showLock() {
+  treeShell.classList.add("is-hidden");
+  lockScreen.classList.remove("is-hidden");
+}
+
+function setStatus(message, isError = false) {
+  statusMessage.textContent = message;
+  statusMessage.classList.toggle("is-error", isError);
+}
+
+function fromBase64(value) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function clearSession() {
+  sessionStorage.removeItem(SESSION_KEY);
+  state.currentNodes = [];
+  state.savedNodes = [];
+  state.currentPassword = null;
+  state.isEditing = false;
+  state.editor = null;
+  state.openEditorOnRender = false;
+  chartRoot.innerHTML = "";
+  showLock();
+  setStatus("Session cleared.");
+  passwordInput.focus();
+}
+
+function setNodes(nodes) {
+  state.currentNodes = cloneNodes(nodes);
+  state.savedNodes = cloneNodes(nodes);
+  state.isEditing = false;
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(state.currentNodes));
+}
+
+function enterEditMode() {
+  if (!state.localSaveAvailable) {
+    return;
+  }
+
+  if (!state.currentPassword) {
+    syncToolbar("Unlock again in this tab before editing so the app can save your local changes.");
+    return;
+  }
+
+  state.isEditing = true;
+  state.openEditorOnRender = true;
+  renderTree(state.currentNodes);
+  syncToolbar();
+}
+
+function discardChanges() {
+  state.currentNodes = cloneNodes(state.savedNodes);
+  state.isEditing = false;
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(state.currentNodes));
+  renderTree(state.currentNodes);
+  syncToolbar("Unsaved edits were discarded.");
+}
+
+async function saveChanges() {
+  if (!state.currentPassword) {
+    syncToolbar("Unlock again in this tab before saving so the app can re-encrypt the files.");
+    return;
+  }
+
+  if (!state.localSaveAvailable) {
+    syncToolbar("Local save is unavailable. Run the project with `npm run local`.");
+    return;
+  }
+
+  state.isSaving = true;
+  syncToolbar("Saving local files...");
+
+  try {
+    const privateJson = stringifyNodes(state.currentNodes);
+    const encryptedPayload = await encryptNodes(state.currentNodes, state.currentPassword);
+    const encryptedJson = `${JSON.stringify(encryptedPayload, null, 2)}\n`;
+    await persistFiles(privateJson, encryptedJson);
+
+    state.savedNodes = cloneNodes(state.currentNodes);
+    state.isEditing = false;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(state.currentNodes));
+    renderTree(state.currentNodes);
+    state.isSaving = false;
+    syncToolbar("Saved directly into the repo. Review and push with GitHub Desktop.");
+  } catch (error) {
+    state.isSaving = false;
+    console.error(error);
+    syncToolbar("Save failed. Start the app with `npm run local` and try again.");
+  }
+}
+
+async function persistFiles(privateJson, encryptedJson) {
+  const response = await fetch("/api/save", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      privateJson,
+      encryptedJson
+    })
+  });
+
+  if (!response.ok) {
+    const payload = await response.text();
+    throw new Error(payload || "Local save endpoint failed.");
+  }
+}
+
+async function encryptNodes(nodes, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(password, salt, ["encrypt"]);
+  const plaintext = new TextEncoder().encode(stringifyNodes(nodes));
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
+    {
+      name: "AES-GCM",
+      iv
+    },
+    key,
+    plaintext
+  ));
+
+  return {
+    version: 1,
+    kdf: "PBKDF2",
+    hash: state.payloadConfig.hash,
+    iterations: state.payloadConfig.iterations,
+    salt: toBase64(salt),
+    iv: toBase64(iv),
+    ciphertext: toBase64(ciphertext)
+  };
+}
+
+async function deriveKey(password, salt, usages) {
+  const passwordKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: state.payloadConfig.iterations,
+      hash: state.payloadConfig.hash
+    },
+    passwordKey,
+    {
+      name: "AES-GCM",
+      length: 256
+    },
+    false,
+    usages
+  );
+}
+
+function syncToolbar(message = "") {
+  const inTree = !treeShell.classList.contains("is-hidden");
+  const canEdit = state.localSaveAvailable;
+  const dirty = hasUnsavedChanges();
+
+  editButton.classList.toggle("is-hidden", !inTree || !canEdit || state.isEditing);
+  discardButton.classList.toggle("is-hidden", !inTree || !canEdit || !state.isEditing);
+  saveButton.classList.toggle("is-hidden", !inTree || !canEdit || !state.isEditing);
+
+  editButton.disabled = !state.currentPassword || state.isSaving;
+  discardButton.disabled = state.isSaving;
+  saveButton.disabled = state.isSaving || !dirty || !state.currentPassword;
+
+  if (message) {
+    treeStatus.textContent = message;
+    return;
+  }
+
+  if (!inTree) {
+    treeStatus.textContent = "";
+    return;
+  }
+
+  if (!canEdit) {
+    if (isLocalRuntime && !state.localSaveChecked) {
+      treeStatus.textContent = "Checking local editing support...";
+      return;
+    }
+
+    if (isLocalRuntime) {
+      treeStatus.textContent = "Read-only here. Start the project with `npm run local` for direct save into the repo.";
+      return;
+    }
+
+    treeStatus.textContent = "Published mode is read-only.";
+    return;
+  }
+
+  if (!state.currentPassword) {
+    treeStatus.textContent = "Local edit mode is available after a fresh unlock in this tab.";
+    return;
+  }
+
+  if (state.isEditing) {
+    treeStatus.textContent = "Editing locally. Save card changes in the modal, then click Save once for the whole tree.";
+    return;
+  }
+
+  treeStatus.textContent = "Local server detected. Click Edit to make changes.";
+}
+
+function hasUnsavedChanges() {
+  return stringifyNodes(state.currentNodes) !== stringifyNodes(state.savedNodes);
+}
+
+function stringifyNodes(nodes) {
+  return `${JSON.stringify(nodes, null, 2)}\n`;
+}
+
+function cloneNodes(nodes) {
+  return JSON.parse(JSON.stringify(nodes));
+}
+
+function isLocalEditingRuntime() {
+  return location.protocol === "file:"
+    || location.hostname === "localhost"
+    || location.hostname === "127.0.0.1"
+    || location.hostname === "::1"
+    || location.hostname === "[::1]";
+}
+
+function toBase64(value) {
+  let binary = "";
+  for (const byte of value) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+window.unlock = unlock;
+window.renderTree = renderTree;
+window.clearSession = clearSession;

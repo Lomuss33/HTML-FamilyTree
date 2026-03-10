@@ -1,0 +1,56 @@
+[
+  {
+    "id": "root-person",
+    "data": {
+      "first name": "First",
+      "last name": "Last",
+      "birthday": "2000",
+      "avatar": "",
+      "gender": "M"
+    },
+    "rels": {
+      "parents": [
+        "parent-one",
+        "parent-two"
+      ],
+      "children": [],
+      "spouses": []
+    }
+  },
+  {
+    "id": "parent-one",
+    "data": {
+      "first name": "Parent",
+      "last name": "One",
+      "birthday": "1970",
+      "avatar": "",
+      "gender": "M"
+    },
+    "rels": {
+      "children": [
+        "root-person"
+      ],
+      "spouses": [
+        "parent-two"
+      ]
+    }
+  },
+  {
+    "id": "parent-two",
+    "data": {
+      "first name": "Parent",
+      "last name": "Two",
+      "birthday": "1972",
+      "avatar": "",
+      "gender": "F"
+    },
+    "rels": {
+      "children": [
+        "root-person"
+      ],
+      "spouses": [
+        "parent-one"
+      ]
+    }
+  }
+]

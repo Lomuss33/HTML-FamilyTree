@@ -1,0 +1,12 @@
+{
+  "name": "drvo-obiteljsko",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "local": "node scripts/local-server.mjs",
+    "encrypt": "node scripts/encrypt-family.mjs",
+    "validate": "node scripts/validate-public-build.mjs",
+    "build": "npm run encrypt && npm run validate"
+  }
+}

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Archive</title>
+  <meta name="description" content="A private family tree unlocked with a shared password.">
+  <link rel="stylesheet" href="./assets/vendor/family-chart.css">
+  <link rel="stylesheet" href="./assets/app.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero" id="lock-screen" aria-labelledby="lock-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Private Family Archive</p>
+        <h1 id="lock-title">A lightweight family tree, unlocked locally.</h1>
+        <p class="lede">
+          This site runs entirely on GitHub Pages. The tree data stays encrypted until
+          you enter the shared password in your browser.
+        </p>
+      </div>
+
+      <form class="unlock-card" id="unlock-form">
+        <label class="field">
+          <span>Password</span>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Enter shared password"
+            required
+          >
+        </label>
+        <button class="primary-button" type="submit" id="unlock-button">Unlock Tree</button>
+        <p class="status-message" id="status-message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="tree-shell is-hidden" id="tree-shell" aria-live="polite">
+      <header class="tree-toolbar">
+        <div>
+          <h2>Family Tree <span class="title-meta">- Unlocked Session</span></h2>
+        </div>
+        <div class="toolbar-meta">
+          <p class="toolbar-message" id="tree-status"></p>
+          <button class="secondary-button is-hidden" id="edit-button" type="button">Edit</button>
+          <button class="secondary-button is-hidden" id="discard-button" type="button">Discard</button>
+          <button class="primary-button is-hidden" id="save-button" type="button">Save</button>
+          <button class="secondary-button" id="clear-session" type="button">Lock</button>
+        </div>
+      </header>
+
+      <div class="tree-stage">
+        <div id="family-chart" class="f3 chart-root"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./assets/vendor/d3.min.js" defer></script>
+  <script src="./assets/vendor/family-chart.js" defer></script>
+  <script src="./assets/app.js" defer></script>
+</body>
+</html>
