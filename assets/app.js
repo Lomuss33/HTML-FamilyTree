@@ -14,6 +14,7 @@ const editButton = document.getElementById("edit-button");
 const discardButton = document.getElementById("discard-button");
 const saveButton = document.getElementById("save-button");
 const suggestButton = document.getElementById("suggest-button");
+const guestSuggestButton = document.getElementById("guest-suggest-button");
 const suggestionDialog = document.getElementById("suggestion-dialog");
 const suggestionForm = document.getElementById("suggestion-form");
 const suggestionCancelButton = document.getElementById("suggestion-cancel");
@@ -54,10 +55,12 @@ window.addEventListener("DOMContentLoaded", () => {
   discardButton.addEventListener("click", discardChanges);
   saveButton.addEventListener("click", saveChanges);
   suggestButton.addEventListener("click", openSuggestionDialog);
+  guestSuggestButton.addEventListener("click", openSuggestionDialog);
   suggestionForm.addEventListener("submit", submitSuggestion);
   suggestionCancelButton.addEventListener("click", closeSuggestionDialog);
   suggestionCloseButton.addEventListener("click", closeSuggestionDialog);
   suggestionDialog.addEventListener("close", () => setSuggestionStatus(""));
+  guestSuggestButton.classList.toggle("is-hidden", !suggestionsApiUrl);
   syncToolbar();
 });
 

@@ -126,6 +126,27 @@ h2 {
   animation: rise-in 550ms ease-out;
 }
 
+.unlock-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.unlock-divider::before,
+.unlock-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(31, 42, 34, 0.14);
+}
+
+.guest-suggestion-button {
+  width: 100%;
+}
+
 .field {
   display: grid;
   gap: 8px;

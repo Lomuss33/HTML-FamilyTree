@@ -62,8 +62,10 @@ window.FAMILY_TREE_CONFIG = Object.freeze({
 Commit and publish that file with the GitHub Pages site. The API URL is public;
 the submission access code is never put in a repository file.
 
-The Suggest an update button appears only after the family tree is unlocked and
-only when `suggestionsApiUrl` is a valid HTTPS URL.
+When `suggestionsApiUrl` is a valid HTTPS URL, the same suggestion form is
+available from both the locked screen and the unlocked tree toolbar. The locked
+screen route never unlocks or renders the family tree; it only opens the
+write-only suggestion form.
 
 ## Request contract
 
