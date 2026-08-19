@@ -148,11 +148,37 @@ h2 {
   transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
+.field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 7rem;
+  border: 1px solid rgba(31, 42, 34, 0.16);
+  border-radius: 16px;
+  padding: 10px 13px;
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.84);
+}
+
 .field input:focus {
   outline: none;
   border-color: rgba(40, 85, 64, 0.55);
   box-shadow: 0 0 0 4px rgba(40, 85, 64, 0.12);
   transform: translateY(-1px);
+}
+
+.field textarea:focus {
+  outline: none;
+  border-color: rgba(40, 85, 64, 0.55);
+  box-shadow: 0 0 0 4px rgba(40, 85, 64, 0.12);
+}
+
+.field em {
+  font-style: normal;
+  color: var(--muted);
+  font-weight: 400;
 }
 
 .primary-button,
@@ -363,6 +389,67 @@ h2 {
   display: none;
 }
 
+.suggestion-dialog {
+  width: min(94vw, 560px);
+  max-height: min(90dvh, 760px);
+  overflow: auto;
+  border: 1px solid rgba(31, 42, 34, 0.15);
+  border-radius: 24px;
+  padding: 0;
+  color: var(--ink);
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+
+.suggestion-dialog::backdrop {
+  background: rgba(11, 20, 14, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.suggestion-form {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+}
+
+.suggestion-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+
+.suggestion-heading .eyebrow {
+  margin-bottom: 5px;
+}
+
+.suggestion-lede {
+  margin: -2px 0 2px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.dialog-close {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  color: var(--ink);
+  background: rgba(31, 42, 34, 0.08);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.suggestion-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -439,5 +526,9 @@ h2 {
 
   .primary-button {
     width: 100%;
+  }
+
+  .suggestion-actions {
+    flex-direction: column-reverse;
   }
 }

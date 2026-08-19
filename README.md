@@ -127,3 +127,10 @@ Example:
 ## Maintenance
 
 See `MAINTAINER.md` for the operational workflow, validation checklist, and customization notes.
+
+## Optional Guest Suggestions
+
+The core site is static and read-only. An optional AWS SAM stack can collect
+guest suggestions without exposing the private family data or changing the
+local editing workflow. See `docs/suggestions-api.md` for deployment,
+configuration, security boundaries, and operational notes.

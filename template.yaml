@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Write-only family tree suggestion API. The encrypted tree remains hosted as
+  static files; this stack stores only pending guest suggestions.
+
+Parameters:
+  AllowedOrigin:
+    Type: String
+    Description: Exact GitHub Pages origin allowed to submit suggestions (no trailing slash).
+    Default: https://YOUR_GITHUB_USERNAME.github.io
+  SubmissionAccessCode:
+    Type: String
+    NoEcho: true
+    MinLength: 12
+    Description: Shared access code for submitting a suggestion. Use a long random value, not the tree password.
+  SuggestionRetentionDays:
+    Type: Number
+    Default: 365
+    MinValue: 30
+    MaxValue: 3650
+    Description: Number of days pending suggestions are retained before DynamoDB TTL eligibility.
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures:
+      - arm64
+    MemorySize: 128
+    Timeout: 5
+    Tracing: Active
+
+Resources:
+  SuggestionsApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          title: family-tree-suggestions
+          version: "1.0"
+        paths: {}
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref AllowedOrigin
+        AllowHeaders:
+          - content-type
+        AllowMethods:
+          - POST
+        MaxAge: 600
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 5
+        ThrottlingRateLimit: 2
+      AccessLogSettings:
+        DestinationArn: !GetAtt SuggestionsApiAccessLogGroup.Arn
+        Format: '{"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","responseLength":"$context.responseLength"}'
+
+  SuggestionsApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+
+  SuggestionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: status-createdAt-index
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  SubmitSuggestionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/
+      Handler: src/submit-suggestion.handler
+      Environment:
+        Variables:
+          SUGGESTIONS_TABLE_NAME: !Ref SuggestionsTable
+          SUBMISSION_ACCESS_CODE: !Ref SubmissionAccessCode
+          SUGGESTION_RETENTION_DAYS: !Ref SuggestionRetentionDays
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBWritePolicy:
+            TableName: !Ref SuggestionsTable
+      Events:
+        SubmitSuggestion:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SuggestionsApi
+            Path: /suggestions
+            Method: POST
+            PayloadFormatVersion: "2.0"
+
+  SubmitSuggestionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${SubmitSuggestionFunction}
+      RetentionInDays: 14
+
+Outputs:
+  SuggestionsApiUrl:
+    Description: Public HTTPS endpoint used by assets/site-config.js.
+    Value: !Sub https://${SuggestionsApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/suggestions
+  SuggestionsTableName:
+    Description: DynamoDB table containing pending suggestions.
+    Value: !Ref SuggestionsTable

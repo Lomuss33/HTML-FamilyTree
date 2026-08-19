@@ -47,6 +47,7 @@
           <button class="secondary-button is-hidden" id="edit-button" type="button">Edit</button>
           <button class="secondary-button is-hidden" id="discard-button" type="button">Discard</button>
           <button class="primary-button is-hidden" id="save-button" type="button">Save</button>
+          <button class="secondary-button is-hidden" id="suggest-button" type="button">Suggest an update</button>
           <button class="secondary-button" id="clear-session" type="button">Lock</button>
         </div>
       </header>
@@ -57,8 +58,47 @@
     </section>
   </main>
 
+  <dialog class="suggestion-dialog" id="suggestion-dialog" aria-labelledby="suggestion-title">
+    <form class="suggestion-form" id="suggestion-form" novalidate>
+      <div class="suggestion-heading">
+        <div>
+          <p class="eyebrow">Family archive</p>
+          <h2 id="suggestion-title">Suggest an update</h2>
+        </div>
+        <button class="dialog-close" type="button" id="suggestion-cancel" aria-label="Close suggestion form">×</button>
+      </div>
+      <p class="suggestion-lede">Suggestions are reviewed before anything is changed in the family tree.</p>
+      <label class="field">
+        <span>Your name</span>
+        <input id="suggestion-name" name="submitterName" type="text" maxlength="100" autocomplete="name" required>
+      </label>
+      <label class="field">
+        <span>Email <em>(optional)</em></span>
+        <input id="suggestion-email" name="email" type="email" maxlength="254" autocomplete="email">
+      </label>
+      <label class="field">
+        <span>Relationship <em>(optional)</em></span>
+        <input id="suggestion-relationship" name="relationship" type="text" maxlength="120" placeholder="For example, cousin or grandchild">
+      </label>
+      <label class="field">
+        <span>Suggestion</span>
+        <textarea id="suggestion-message" name="message" maxlength="2000" rows="5" required placeholder="What should be added, corrected, or checked?"></textarea>
+      </label>
+      <label class="field">
+        <span>Submission access code</span>
+        <input id="suggestion-code" name="accessCode" type="password" maxlength="200" autocomplete="off" required>
+      </label>
+      <p class="status-message" id="suggestion-status" role="status" aria-live="polite"></p>
+      <div class="suggestion-actions">
+        <button class="secondary-button" type="button" id="suggestion-close">Cancel</button>
+        <button class="primary-button" type="submit" id="suggestion-submit">Send suggestion</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="./assets/vendor/d3.min.js" defer></script>
   <script src="./assets/vendor/family-chart.js" defer></script>
+  <script src="./assets/site-config.js" defer></script>
   <script src="./assets/app.js" defer></script>
 </body>
 </html>

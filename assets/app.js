@@ -13,6 +13,15 @@ const treeStatus = document.getElementById("tree-status");
 const editButton = document.getElementById("edit-button");
 const discardButton = document.getElementById("discard-button");
 const saveButton = document.getElementById("save-button");
+const suggestButton = document.getElementById("suggest-button");
+const suggestionDialog = document.getElementById("suggestion-dialog");
+const suggestionForm = document.getElementById("suggestion-form");
+const suggestionCancelButton = document.getElementById("suggestion-cancel");
+const suggestionCloseButton = document.getElementById("suggestion-close");
+const suggestionSubmitButton = document.getElementById("suggestion-submit");
+const suggestionStatus = document.getElementById("suggestion-status");
+
+const suggestionsApiUrl = getSuggestionsApiUrl();
 
 const state = {
   currentNodes: [],
@@ -44,6 +53,11 @@ window.addEventListener("DOMContentLoaded", () => {
   editButton.addEventListener("click", enterEditMode);
   discardButton.addEventListener("click", discardChanges);
   saveButton.addEventListener("click", saveChanges);
+  suggestButton.addEventListener("click", openSuggestionDialog);
+  suggestionForm.addEventListener("submit", submitSuggestion);
+  suggestionCancelButton.addEventListener("click", closeSuggestionDialog);
+  suggestionCloseButton.addEventListener("click", closeSuggestionDialog);
+  suggestionDialog.addEventListener("close", () => setSuggestionStatus(""));
   syncToolbar();
 });
 
@@ -395,6 +409,7 @@ function syncToolbar(message = "") {
   editButton.classList.toggle("is-hidden", !inTree || !canEdit || state.isEditing);
   discardButton.classList.toggle("is-hidden", !inTree || !canEdit || !state.isEditing);
   saveButton.classList.toggle("is-hidden", !inTree || !canEdit || !state.isEditing);
+  suggestButton.classList.toggle("is-hidden", !inTree || !suggestionsApiUrl);
 
   editButton.disabled = !state.currentPassword || state.isSaving;
   discardButton.disabled = state.isSaving;
@@ -436,6 +451,71 @@ function syncToolbar(message = "") {
   }
 
   treeStatus.textContent = "Local server detected. Click Edit to make changes.";
+}
+
+function getSuggestionsApiUrl() {
+  const value = window.FAMILY_TREE_CONFIG?.suggestionsApiUrl;
+  if (typeof value !== "string" || !/^https:\/\//i.test(value)) {
+    return "";
+  }
+  return value.replace(/\/$/, "");
+}
+
+function openSuggestionDialog() {
+  if (!suggestionsApiUrl) {
+    return;
+  }
+
+  suggestionForm.reset();
+  setSuggestionStatus("");
+  suggestionDialog.showModal();
+  document.getElementById("suggestion-name").focus();
+}
+
+function closeSuggestionDialog() {
+  if (!suggestionSubmitButton.disabled) {
+    suggestionDialog.close();
+  }
+}
+
+async function submitSuggestion(event) {
+  event.preventDefault();
+
+  if (!suggestionsApiUrl) {
+    setSuggestionStatus("Suggestion submission is not configured.", true);
+    return;
+  }
+
+  const formData = new FormData(suggestionForm);
+  const payload = Object.fromEntries(formData.entries());
+  suggestionSubmitButton.disabled = true;
+  setSuggestionStatus("Sending suggestion...");
+
+  try {
+    const response = await fetch(suggestionsApiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error || "Unable to send the suggestion.");
+    }
+
+    suggestionForm.reset();
+    setSuggestionStatus("Thank you. Your suggestion was sent for review.");
+  } catch (error) {
+    console.error(error);
+    setSuggestionStatus(error.message || "Unable to send the suggestion. Try again later.", true);
+  } finally {
+    suggestionSubmitButton.disabled = false;
+  }
+}
+
+function setSuggestionStatus(message, isError = false) {
+  suggestionStatus.textContent = message;
+  suggestionStatus.classList.toggle("is-error", isError);
 }
 
 function hasUnsavedChanges() {

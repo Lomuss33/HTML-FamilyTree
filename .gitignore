@@ -1,1 +1,4 @@
 data/family.private.json
+.aws-sam/
+samconfig.toml
+node_modules/
