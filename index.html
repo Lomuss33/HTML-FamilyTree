@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Family Archive</title>
   <meta name="description" content="A private family tree unlocked with a shared password.">
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./assets/vendor/family-chart.css">
   <link rel="stylesheet" href="./assets/app.css">
 </head>
@@ -22,17 +23,17 @@
 
       <form class="unlock-card" id="unlock-form">
         <label class="field">
-          <span>Password</span>
+          <span>Family password</span>
           <input
             id="password"
             name="password"
             type="password"
             autocomplete="current-password"
-            placeholder="Enter shared password"
+            placeholder="Enter family password"
             required
           >
         </label>
-        <button class="primary-button" type="submit" id="unlock-button">Unlock Tree</button>
+        <button class="primary-button" type="submit" id="unlock-button">Enter Family Tree</button>
         <p class="status-message" id="status-message" role="status" aria-live="polite"></p>
         <div class="unlock-divider" aria-hidden="true"><span>or</span></div>
         <button class="secondary-button guest-suggestion-button is-hidden" id="guest-suggest-button" type="button">Suggest a correction</button>

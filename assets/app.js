@@ -233,12 +233,14 @@ function renderTree(nodes) {
 }
 
 function showTree() {
+  document.body.classList.add("is-tree-mode");
   lockScreen.classList.add("is-hidden");
   treeShell.classList.remove("is-hidden");
   syncToolbar();
 }
 
 function showLock() {
+  document.body.classList.remove("is-tree-mode");
   treeShell.classList.add("is-hidden");
   lockScreen.classList.remove("is-hidden");
 }

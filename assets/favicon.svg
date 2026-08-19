@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Family Archive</title>
+  <rect width="64" height="64" rx="16" fill="#163729"/>
+  <g transform="translate(64 0) scale(-1 1)">
+    <g fill="none" stroke="#FFF9EF" stroke-linecap="round" stroke-linejoin="round" stroke-width="5">
+      <path d="M32 23v11M32 34 19 42M32 34l13 8"/>
+    </g>
+    <g fill="#FFF9EF">
+      <circle cx="32" cy="17" r="6"/>
+      <circle cx="19" cy="47" r="6"/>
+      <circle cx="45" cy="47" r="6"/>
+    </g>
+  </g>
+</svg>
