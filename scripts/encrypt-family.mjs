@@ -1,6 +1,7 @@
 import { pbkdf2Sync, randomBytes, createCipheriv } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { validateFamilyData } from "./validate-family-data.mjs";
 
 const defaults = {
   input: path.resolve("data/family.private.json"),
@@ -27,8 +28,11 @@ if (!Number.isInteger(iterations) || iterations < 100000) {
 
 const plaintext = await readFile(inputPath, "utf8");
 const familyNodes = JSON.parse(plaintext);
-if (!Array.isArray(familyNodes)) {
-  console.error("Input JSON must be an array of family nodes.");
+try {
+  validateFamilyData(familyNodes);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  console.error("Encryption stopped; the existing encrypted payload was not changed.");
   process.exit(1);
 }
 

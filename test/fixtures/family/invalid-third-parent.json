@@ -1,0 +1,22 @@
+[
+  {
+    "id": "parent-a",
+    "data": { "gender": "M" },
+    "rels": { "parents": [], "children": ["child"], "spouses": [] }
+  },
+  {
+    "id": "parent-b",
+    "data": { "gender": "F" },
+    "rels": { "parents": [], "children": ["child"], "spouses": [] }
+  },
+  {
+    "id": "parent-c",
+    "data": { "gender": "M" },
+    "rels": { "parents": [], "children": ["child"], "spouses": [] }
+  },
+  {
+    "id": "child",
+    "data": { "gender": "F" },
+    "rels": { "parents": ["parent-a", "parent-b", "parent-c"], "children": [], "spouses": [] }
+  }
+]

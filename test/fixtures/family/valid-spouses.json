@@ -1,0 +1,12 @@
+[
+  {
+    "id": "spouse-a",
+    "data": { "first name": "Alex", "last name": "Example", "birthday": "1970", "avatar": "", "gender": "M" },
+    "rels": { "parents": [], "children": [], "spouses": ["spouse-b"] }
+  },
+  {
+    "id": "spouse-b",
+    "data": { "first name": "Blair", "last name": "Example", "birthday": "1972", "avatar": "", "gender": "F" },
+    "rels": { "parents": [], "children": [], "spouses": ["spouse-a"] }
+  }
+]

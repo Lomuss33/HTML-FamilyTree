@@ -22,8 +22,12 @@ This repository is designed for one maintainer workflow:
 4. Click `Edit`.
 5. Save card changes inside the modal as you work.
 6. Click the page-level `Save` when the full session is done.
-7. Check the changed files in GitHub Desktop.
-8. Commit and push.
+7. If ids, relationships, or public-anchor metadata changed, run
+   `npm run generate:anchors`.
+8. Run `npm run validate`.
+9. Inspect `data/family.anchors.public.json`; every value in it is public.
+10. Check the changed files in GitHub Desktop.
+11. Commit and push.
 
 ## Files That Matter
 
@@ -35,6 +39,29 @@ This repository is designed for one maintainer workflow:
 
 - `data/family.template.json`
   Use this when creating a new family tree from scratch.
+
+- `data/family.anchors.public.json`
+  Generated minimal catalog containing only explicitly approved public labels.
+
+- `api/generated/public-anchor-allowlist.json`
+  Generated id-only allowlist paired to the public catalog version.
+
+## Intentional all-member anchor migration
+
+If the publication decision is that every canonical member should be a public
+search anchor, restore the ignored private source and run:
+
+```powershell
+npm run enable:all-anchors
+npm run validate:family
+npm run generate:anchors
+npm run validate
+npm test
+```
+
+The migration keeps ids, relationships, person data, and unrelated fields
+unchanged. It publishes labels, so inspect the complete generated catalog
+before committing it. Never add `data/family.private.json` to Git.
 
 ## Rotating The Shared Password
 
@@ -62,8 +89,9 @@ Important:
 1. Copy `data/family.template.json` to `data/family.private.json`.
 2. Replace all template people with your own structure.
 3. Encrypt with your own shared password.
-4. Validate.
-5. Publish.
+4. Generate the reviewed public anchor catalog with `npm run generate:anchors`.
+5. Validate.
+6. Inspect the generated public catalog and publish.
 
 ## Validation Checklist
 
@@ -73,7 +101,9 @@ Run before pushing:
 npm run validate
 ```
 
-This checks tracked files for leaked plaintext values from the private dataset.
+This validates generated public artifacts and checks tracked files for leaked
+plaintext values from the private dataset. Run the complete fixture and API
+test suite with `npm test`.
 
 ## Local Server Notes
 
@@ -94,4 +124,6 @@ This checks tracked files for leaked plaintext values from the private dataset.
 - Do not commit `data/family.private.json`.
 - Do not paste real family names into tracked docs.
 - Do not edit the encrypted file manually.
+- Do not edit generated public anchor files manually; regenerate and inspect them.
+- Missing privacy metadata always means not public.
 - Keep UTF-8 encoding for names with accents or special characters.

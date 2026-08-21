@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "sha256:6093a5eb6bcba41ea50b75d9268a09001984250d37217f0fdcbd83e956fc36b8",
+  "sourceRevision": "sha256:ede02ec1ccfaf3c1dc6a166eb0f0de70221553f5447e9429632f5370c6a1498c",
+  "anchors": [
+    {
+      "id": "0",
+      "displayLabel": "Lovro Music",
+      "lifespanLabel": "1970"
+    },
+    {
+      "id": "09f4832b-7cd9-4794-923c-2706ac34384b",
+      "displayLabel": "Iva Ćurčić"
+    },
+    {
+      "id": "17379053-a9f4-4637-ac96-e8ef6ec4f64f",
+      "displayLabel": "Ana Bagarić"
+    },
+    {
+      "id": "1c3f5c4f-ef87-40b2-9715-e7734705c2ad",
+      "displayLabel": "Matija Musić",
+      "lifespanLabel": "1999"
+    },
+    {
+      "id": "20f2e52f-c378-41fc-990c-4477d477dff2",
+      "displayLabel": "Stana Bagarić"
+    },
+    {
+      "id": "39bfa536-0cb9-4918-9492-af0971897f4a",
+      "displayLabel": "Božica Bagarić"
+    },
+    {
+      "id": "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+      "displayLabel": "Željko Musić"
+    },
+    {
+      "id": "7b32403d-8253-4366-855a-c2c38d4212ca",
+      "displayLabel": "Anđa Bagarić"
+    },
+    {
+      "id": "977c405a-8b9b-49ad-b72a-e5c282528019",
+      "displayLabel": "Marija Musić"
+    },
+    {
+      "id": "9d1d2211-04e5-4653-bdfa-377e569756db",
+      "displayLabel": "Frano Bagarić"
+    },
+    {
+      "id": "b6951ec7-dff1-4281-8030-79699f89d2b5",
+      "displayLabel": "Ivana Musić",
+      "lifespanLabel": "2005"
+    },
+    {
+      "id": "bd408427-5def-40bd-a874-8d2218d946d3",
+      "displayLabel": "Lovre Musić",
+      "lifespanLabel": "1945"
+    },
+    {
+      "id": "ca7b0244-0d27-4915-a30f-8bd754206800",
+      "displayLabel": "Ruža Bagarić"
+    },
+    {
+      "id": "cc55fb39-11c6-4b88-bc1e-d1ecf0f5dcbb",
+      "displayLabel": "Ljubica Bagarić"
+    },
+    {
+      "id": "fec34b29-1686-47a3-a57e-dda0256c012b",
+      "displayLabel": "Matija"
+    }
+  ]
+}

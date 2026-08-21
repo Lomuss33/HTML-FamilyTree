@@ -1,0 +1,17 @@
+[
+  {
+    "id": "grandparent",
+    "data": { "first name": "Grand", "last name": "Example", "birthday": "1940", "avatar": "", "gender": "F" },
+    "rels": { "parents": [], "children": ["parent"], "spouses": [] }
+  },
+  {
+    "id": "parent",
+    "data": { "first name": "Parent", "last name": "Example", "birthday": "1970", "avatar": "", "gender": "M" },
+    "rels": { "parents": ["grandparent"], "children": ["child"], "spouses": [] }
+  },
+  {
+    "id": "child",
+    "data": { "first name": "Child", "last name": "Example", "birthday": "2000", "avatar": "", "gender": "F" },
+    "rels": { "parents": ["parent"], "children": [], "spouses": [] }
+  }
+]

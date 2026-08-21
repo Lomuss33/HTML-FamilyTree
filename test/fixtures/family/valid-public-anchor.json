@@ -1,0 +1,25 @@
+[
+  {
+    "id": "approved-anchor",
+    "data": {
+      "first name": "PrivateOnlyFirst",
+      "last name": "PrivateOnlyLast",
+      "birthday": "1901-02-03",
+      "avatar": "https://private.invalid/photo.jpg",
+      "gender": "F",
+      "private note": "This field must never be copied"
+    },
+    "rels": { "parents": [], "children": [], "spouses": [] },
+    "privacy": {
+      "publicAnchor": true,
+      "publicLabel": "Reviewed Public Label",
+      "publicLifespan": "1901–1999",
+      "publicBranchLabel": "Example branch"
+    }
+  },
+  {
+    "id": "private-person",
+    "data": { "first name": "NeverPublic", "last name": "Person", "birthday": "1980", "avatar": "secret.jpg", "gender": "M" },
+    "rels": { "parents": [], "children": [], "spouses": [] }
+  }
+]

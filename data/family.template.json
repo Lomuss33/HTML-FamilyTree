@@ -15,6 +15,12 @@
       ],
       "children": [],
       "spouses": []
+    },
+    "privacy": {
+      "publicAnchor": false,
+      "publicLabel": "",
+      "publicLifespan": "",
+      "publicBranchLabel": ""
     }
   },
   {
@@ -27,12 +33,19 @@
       "gender": "M"
     },
     "rels": {
+      "parents": [],
       "children": [
         "root-person"
       ],
       "spouses": [
         "parent-two"
       ]
+    },
+    "privacy": {
+      "publicAnchor": false,
+      "publicLabel": "",
+      "publicLifespan": "",
+      "publicBranchLabel": ""
     }
   },
   {
@@ -45,12 +58,19 @@
       "gender": "F"
     },
     "rels": {
+      "parents": [],
       "children": [
         "root-person"
       ],
       "spouses": [
         "parent-one"
       ]
+    },
+    "privacy": {
+      "publicAnchor": false,
+      "publicLabel": "",
+      "publicLifespan": "",
+      "publicBranchLabel": ""
     }
   }
 ]

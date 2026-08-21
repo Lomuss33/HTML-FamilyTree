@@ -1,0 +1,12 @@
+[
+  {
+    "id": "spouse-a",
+    "data": { "gender": "M" },
+    "rels": { "parents": [], "children": [], "spouses": ["spouse-b"] }
+  },
+  {
+    "id": "spouse-b",
+    "data": { "gender": "F" },
+    "rels": { "parents": [], "children": [], "spouses": [] }
+  }
+]

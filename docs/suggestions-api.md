@@ -7,11 +7,10 @@ It never receives the tree encryption password or the decrypted tree itself.
 ## What is deployed
 
 - API Gateway HTTP API: `POST /suggestions`, HTTPS by default
-- Lambda: validates and stores a suggestion
+- Lambda: validates text and additive graph suggestions and stores a normalized record
 - DynamoDB: on-demand table of pending suggestions
 - AWS X-Ray tracing for the Lambda function
 - API Gateway throttling: two requests/second with a burst of five
-- Lambda reserved concurrency: two concurrent requests
 - API Gateway and Lambda logs retained for 14 days, without request bodies
 - DynamoDB TTL: suggestions become eligible for removal after the selected
   retention period
@@ -67,10 +66,15 @@ available from both the locked screen and the unlocked tree toolbar. The locked
 screen route never unlocks or renders the family tree; it only opens the
 write-only suggestion form.
 
-## Request contract
+## Request contracts
+
+Legacy text requests remain accepted. The frontend now sends the equivalent
+schema-v1 text request:
 
 ```json
 {
+  "schemaVersion": 1,
+  "type": "text",
   "accessCode": "shared-submission-code",
   "submitterName": "Ada Lovelace",
   "email": "ada@example.com",
@@ -82,12 +86,82 @@ write-only suggestion form.
 `email` and `relationship` are optional. The access code is checked by Lambda,
 is not stored in DynamoDB, and is never returned in an API response.
 
+Visual requests contain one allowlisted anchor and only proposed additions:
+
+```json
+{
+  "schemaVersion": 1,
+  "type": "graph",
+  "anchorPersonId": "approved-anchor-id",
+  "anchorCatalogVersion": "sha256:...",
+  "sourceRevision": "sha256:...",
+  "people": [
+    {
+      "id": "tmp_1",
+      "firstName": "Fictional",
+      "lastName": "Person",
+      "birthday": "1970",
+      "gender": "M"
+    }
+  ],
+  "relationships": [
+    { "from": "approved-anchor-id", "to": "tmp_1", "type": "parentOf" }
+  ],
+  "comment": "Optional context",
+  "submitterName": "Guest",
+  "email": "",
+  "relationship": "Relative",
+  "accessCode": "shared-submission-code"
+}
+```
+
+The request is limited to 64 KiB, 50 proposed people, and 100 relationships.
+Only `parentOf` and `spouseOf` are supported. Unknown keys and any mutation-like
+operation are rejected. `api/generated/public-anchor-allowlist.json` is bundled
+with Lambda and is authoritative for both the anchor id and catalog version.
+
+## Stored records
+
+Both request types are stored without the access code in a common envelope:
+
+```json
+{
+  "id": "server-generated-id",
+  "schemaVersion": 1,
+  "type": "graph",
+  "status": "pending",
+  "createdAt": "server timestamp",
+  "updatedAt": "server timestamp",
+  "expiresAt": 0,
+  "submitter": {
+    "name": "Guest",
+    "email": "",
+    "relationship": "Relative"
+  },
+  "payload": {
+    "anchorPersonId": "approved-anchor-id",
+    "anchorCatalogVersion": "sha256:...",
+    "sourceRevision": "sha256:...",
+    "people": [],
+    "relationships": [],
+    "comment": ""
+  }
+}
+```
+
+Existing legacy DynamoDB records remain valid because DynamoDB does not require
+non-key attributes to share a schema. No table migration or replacement is
+needed. Operational logs contain request id, suggestion type, result category,
+and validation category only; request bodies and personal data are not logged.
+
 ## Operations
 
 - Monitor cost with an AWS Budget; alerts are delayed and are not a hard cap.
 - DynamoDB TTL deletion is asynchronous, so expired suggestions may remain for
   some time after `expiresAt`.
 - Rotate the submission access code with a CloudFormation parameter update.
+- Regenerate and commit both anchor artifacts before building Lambda whenever
+  public anchor membership or labels change.
 - Do not add an unauthenticated GET endpoint for suggestion data.
 - Delete the CloudFormation stack to remove the AWS resources when the feature
   is no longer needed. Back up/export any suggestions first.

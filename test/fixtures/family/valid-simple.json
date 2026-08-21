@@ -1,0 +1,12 @@
+[
+  {
+    "id": "parent",
+    "data": { "first name": "Parent", "last name": "Example", "birthday": "1970", "avatar": "", "gender": "M" },
+    "rels": { "parents": [], "children": ["child"], "spouses": [] }
+  },
+  {
+    "id": "child",
+    "data": { "first name": "Child", "last name": "Example", "birthday": "2000", "avatar": "", "gender": "F" },
+    "rels": { "parents": ["parent"], "children": [], "spouses": [] }
+  }
+]

@@ -1,0 +1,7 @@
+[
+  {
+    "id": "self-spouse",
+    "data": { "gender": "F" },
+    "rels": { "parents": [], "children": [], "spouses": ["self-spouse"] }
+  }
+]

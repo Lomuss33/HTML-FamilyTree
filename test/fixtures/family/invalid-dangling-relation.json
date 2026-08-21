@@ -1,0 +1,7 @@
+[
+  {
+    "id": "person",
+    "data": { "gender": "M" },
+    "rels": { "parents": [], "children": ["missing-person"], "spouses": [] }
+  }
+]

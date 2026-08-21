@@ -62,46 +62,239 @@
   </main>
 
   <dialog class="suggestion-dialog" id="suggestion-dialog" aria-labelledby="suggestion-title">
-    <form class="suggestion-form" id="suggestion-form" novalidate>
+    <div class="suggestion-experience">
       <div class="suggestion-heading">
         <div>
           <p class="eyebrow">Family archive</p>
-          <h2 id="suggestion-title">Suggest an update</h2>
+          <h2 id="suggestion-title">Suggest a correction</h2>
         </div>
-        <button class="dialog-close" type="button" id="suggestion-cancel" aria-label="Close suggestion form">×</button>
+        <button class="dialog-close" type="button" id="suggestion-cancel" aria-label="Close suggestion workspace">×</button>
       </div>
       <p class="suggestion-lede">Suggestions are reviewed before anything is changed in the family tree.</p>
-      <label class="field">
-        <span>Your name</span>
-        <input id="suggestion-name" name="submitterName" type="text" maxlength="100" autocomplete="name" required>
-      </label>
-      <label class="field">
-        <span>Email <em>(optional)</em></span>
-        <input id="suggestion-email" name="email" type="email" maxlength="254" autocomplete="email">
-      </label>
-      <label class="field">
-        <span>Relationship <em>(optional)</em></span>
-        <input id="suggestion-relationship" name="relationship" type="text" maxlength="120" placeholder="For example, cousin or grandchild">
-      </label>
-      <label class="field">
-        <span>Suggestion</span>
-        <textarea id="suggestion-message" name="message" maxlength="2000" rows="5" required placeholder="What should be added, corrected, or checked?"></textarea>
-      </label>
-      <label class="field">
-        <span>Submission access code</span>
-        <input id="suggestion-code" name="accessCode" type="password" maxlength="200" autocomplete="off" required>
-      </label>
-      <p class="status-message" id="suggestion-status" role="status" aria-live="polite"></p>
-      <div class="suggestion-actions">
-        <button class="secondary-button" type="button" id="suggestion-close">Cancel</button>
-        <button class="primary-button" type="submit" id="suggestion-submit">Send suggestion</button>
+
+      <div class="suggestion-mode-tabs" role="tablist" aria-label="Suggestion type">
+        <button class="suggestion-mode-tab is-active" id="suggestion-simple-tab" type="button" role="tab" aria-selected="true" aria-controls="suggestion-simple-panel">Simple form</button>
+        <button class="suggestion-mode-tab" id="suggestion-visual-tab" type="button" role="tab" aria-selected="false" aria-controls="suggestion-visual-panel" tabindex="-1">Visual tree</button>
       </div>
-    </form>
+
+      <section id="suggestion-simple-panel" role="tabpanel" aria-labelledby="suggestion-simple-tab">
+        <form class="suggestion-form" id="suggestion-form" novalidate>
+          <label class="field">
+            <span>Your name</span>
+            <input id="suggestion-name" name="submitterName" type="text" maxlength="100" autocomplete="name" required>
+          </label>
+          <label class="field">
+            <span>Email <em>(optional)</em></span>
+            <input id="suggestion-email" name="email" type="email" maxlength="254" autocomplete="email">
+          </label>
+          <label class="field">
+            <span>Relationship <em>(optional)</em></span>
+            <input id="suggestion-relationship" name="relationship" type="text" maxlength="120" placeholder="For example, cousin or grandchild">
+          </label>
+          <label class="field">
+            <span>Suggestion</span>
+            <textarea id="suggestion-message" name="message" maxlength="2000" rows="5" required placeholder="What should be added, corrected, or checked?"></textarea>
+          </label>
+          <label class="field">
+            <span>Submission access code</span>
+            <input id="suggestion-code" name="accessCode" type="password" maxlength="200" autocomplete="off" required>
+          </label>
+          <p class="status-message" id="suggestion-status" role="status" aria-live="polite"></p>
+          <div class="suggestion-actions">
+            <button class="secondary-button" type="button" id="suggestion-close">Cancel</button>
+            <button class="primary-button" type="submit" id="suggestion-submit">Send suggestion</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="suggestion-visual-panel" role="tabpanel" aria-labelledby="suggestion-visual-tab" hidden>
+        <div class="visual-suggestion" id="visual-suggestion-root">
+          <section class="visual-anchor-chooser" id="visual-anchor-chooser" aria-labelledby="visual-anchor-heading">
+            <div class="visual-section-heading">
+              <p class="visual-step">Step 1 · Public anchor</p>
+              <h3 id="visual-anchor-heading">Choose where this branch belongs</h3>
+              <p>Only privacy-reviewed public anchor labels are shown. The protected family tree is not opened.</p>
+            </div>
+            <label class="field visual-anchor-search-field">
+              <span>Search approved anchors</span>
+              <input id="visual-anchor-search" type="search" autocomplete="off" placeholder="Search name, lifespan, or branch">
+            </label>
+            <p class="status-message" id="visual-anchor-status" role="status" aria-live="polite"></p>
+            <button class="secondary-button" id="visual-anchor-retry" type="button" hidden>Try again</button>
+            <div class="visual-anchor-list" id="visual-anchor-list" role="listbox" aria-label="Approved public anchors"></div>
+          </section>
+
+          <section class="visual-workspace" id="visual-workspace" hidden>
+            <div id="visual-editor-view">
+              <div class="visual-workspace-toolbar">
+                <div class="visual-current-anchor">
+                  <span class="visual-node-badge">Anchor</span>
+                  <strong id="visual-current-anchor-label"></strong>
+                  <span id="visual-current-anchor-meta"></span>
+                </div>
+                <button class="secondary-button" id="visual-change-anchor" type="button">Change anchor</button>
+              </div>
+
+              <div class="visual-graph-stage">
+                <div class="f3 visual-family-chart" id="visual-family-chart" aria-label="Visual family suggestion graph"></div>
+                <p class="visual-graph-hint">Select a card to add relatives or edit a proposed person. Drag to pan and scroll or pinch to zoom.</p>
+              </div>
+
+              <div class="visual-control-grid">
+                <section class="visual-control-card" aria-labelledby="visual-selected-heading">
+                  <p class="visual-panel-kicker" id="visual-selected-heading">Selected person</p>
+                  <div class="visual-selected-person">
+                    <span class="visual-node-badge" id="visual-selected-badge">Anchor</span>
+                    <strong id="visual-selected-label"></strong>
+                  </div>
+                  <div class="visual-relative-actions">
+                    <button class="secondary-button" type="button" data-visual-add="parent">+ Add parent</button>
+                    <button class="secondary-button" type="button" data-visual-add="child">+ Add child</button>
+                    <button class="secondary-button" type="button" data-visual-add="spouse">+ Add spouse</button>
+                  </div>
+                  <div class="visual-person-actions">
+                    <button class="secondary-button" id="visual-edit-person" type="button" hidden>Edit proposed person</button>
+                    <button class="danger-button" id="visual-remove-person" type="button" hidden>Remove from draft</button>
+                  </div>
+                </section>
+
+                <section class="visual-control-card visual-draft-summary" aria-labelledby="visual-summary-heading">
+                  <p class="visual-panel-kicker" id="visual-summary-heading">Draft summary</p>
+                  <strong id="visual-people-count">0 proposed people</strong>
+                  <span id="visual-relationship-count">0 relationships</span>
+                  <p class="status-message" id="visual-status" role="status" aria-live="polite"></p>
+                  <div class="visual-summary-actions">
+                    <button class="primary-button" id="visual-preview-button" type="button" disabled>Preview proposal</button>
+                    <button class="secondary-button" id="visual-reset-button" type="button">Start over</button>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <aside class="visual-person-editor" id="visual-person-editor" aria-labelledby="visual-person-editor-title" hidden>
+              <form id="visual-person-form">
+                <div class="visual-section-heading">
+                  <p class="visual-step">Draft person</p>
+                  <h3 id="visual-person-editor-title">Add person</h3>
+                  <p id="visual-person-editor-context"></p>
+                </div>
+                <div class="visual-person-fields">
+                  <label class="field">
+                    <span>First name</span>
+                    <input id="visual-person-first-name" type="text" maxlength="100" autocomplete="off" required>
+                  </label>
+                  <label class="field">
+                    <span>Last name <em>(optional)</em></span>
+                    <input id="visual-person-last-name" type="text" maxlength="100" autocomplete="off">
+                  </label>
+                  <label class="field">
+                    <span>Birthday or year <em>(optional)</em></span>
+                    <input id="visual-person-birthday" type="text" maxlength="40" autocomplete="off" placeholder="For example, 1970">
+                  </label>
+                  <label class="field">
+                    <span>Gender</span>
+                    <select id="visual-person-gender" required>
+                      <option value="M">Male</option>
+                      <option value="F">Female</option>
+                    </select>
+                  </label>
+                </div>
+                <p class="status-message" id="visual-person-status" role="status" aria-live="polite"></p>
+                <div class="suggestion-actions">
+                  <button class="secondary-button" id="visual-person-cancel" type="button">Cancel</button>
+                  <button class="primary-button" type="submit">Save to draft</button>
+                </div>
+              </form>
+            </aside>
+
+            <section class="visual-preview" id="visual-preview" aria-labelledby="visual-preview-heading" hidden>
+              <div class="visual-preview-heading">
+                <div class="visual-section-heading">
+                  <p class="visual-step">Step 3 · Preview</p>
+                  <h3 id="visual-preview-heading">Review the proposed branch</h3>
+                  <p>Review the additions before entering your submission details.</p>
+                </div>
+              </div>
+              <div class="visual-preview-grid">
+                <section>
+                  <h4>Anchor</h4>
+                  <p id="visual-preview-anchor"></p>
+                </section>
+                <section>
+                  <h4>Proposed people</h4>
+                  <ul id="visual-preview-people"></ul>
+                </section>
+                <section>
+                  <h4>Relationships</h4>
+                  <ul id="visual-preview-relationships"></ul>
+                </section>
+              </div>
+              <details class="visual-payload-preview">
+                <summary>Structured graph preview</summary>
+                <pre id="visual-serialization"></pre>
+              </details>
+              <div class="suggestion-actions visual-step-actions">
+                <button class="secondary-button" id="visual-preview-back" type="button">Back to draft</button>
+                <button class="primary-button" id="visual-preview-continue" type="button">Continue to submit</button>
+              </div>
+            </section>
+
+            <section class="visual-submit" id="visual-submit" aria-labelledby="visual-submit-heading" hidden>
+              <div class="visual-section-heading">
+                <p class="visual-step">Step 4 · Submit</p>
+                <h3 id="visual-submit-heading">Tell us how to follow up</h3>
+                <p>Your access code authorizes this suggestion only. It does not unlock the family tree.</p>
+              </div>
+              <form id="visual-submit-form" class="suggestion-form" novalidate>
+                <div class="visual-submit-fields">
+                  <label class="field">
+                    <span>Your name</span>
+                    <input id="visual-submitter-name" name="submitterName" type="text" maxlength="100" autocomplete="name" required>
+                  </label>
+                  <label class="field">
+                    <span>Email <em>(optional)</em></span>
+                    <input id="visual-submitter-email" name="email" type="email" maxlength="254" autocomplete="email">
+                  </label>
+                  <label class="field">
+                    <span>Relationship <em>(optional)</em></span>
+                    <input id="visual-submitter-relationship" name="relationship" type="text" maxlength="120" placeholder="For example, cousin or grandchild">
+                  </label>
+                  <label class="field visual-submit-comment">
+                    <span>Comment <em>(optional)</em></span>
+                    <textarea id="visual-submitter-comment" name="comment" maxlength="2000" rows="4" placeholder="Add context that is not shown in the visual branch."></textarea>
+                  </label>
+                  <label class="field visual-submit-code">
+                    <span>Submission access code</span>
+                    <input id="visual-submitter-code" name="accessCode" type="password" maxlength="200" autocomplete="off" required>
+                  </label>
+                </div>
+                <p class="status-message" id="visual-submit-status" role="status" aria-live="polite"></p>
+                <div class="suggestion-actions visual-step-actions">
+                  <button class="secondary-button" id="visual-submit-back" type="button">Back to preview</button>
+                  <button class="primary-button" id="visual-submit-button" type="submit">Submit visual suggestion</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="visual-success" id="visual-success" aria-labelledby="visual-success-heading" hidden>
+              <span class="visual-success-icon" aria-hidden="true">✓</span>
+              <div>
+                <p class="visual-step">Suggestion received</p>
+                <h3 id="visual-success-heading">Thank you</h3>
+                <p>Your visual branch was stored as a pending suggestion for review.</p>
+                <p id="visual-success-reference"></p>
+              </div>
+              <button class="primary-button" id="visual-success-close" type="button">Return to Family Tree</button>
+            </section>
+          </section>
+        </div>
+      </section>
+    </div>
   </dialog>
 
   <script src="./assets/vendor/d3.min.js" defer></script>
   <script src="./assets/vendor/family-chart.js" defer></script>
   <script src="./assets/site-config.js" defer></script>
-  <script src="./assets/app.js" defer></script>
+  <script src="./assets/app.js" type="module"></script>
 </body>
 </html>

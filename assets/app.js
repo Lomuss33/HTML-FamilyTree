@@ -1,3 +1,9 @@
+import { createVisualSuggestionEditor } from "./suggestions/visual-editor.js";
+import {
+  buildTextSuggestionRequest,
+  submitSuggestionRequest
+} from "./suggestions/submission-api.js";
+
 const SESSION_KEY = "family-tree-session-v1";
 const PAYLOAD_URL = "./data/family.enc.json";
 
@@ -21,8 +27,17 @@ const suggestionCancelButton = document.getElementById("suggestion-cancel");
 const suggestionCloseButton = document.getElementById("suggestion-close");
 const suggestionSubmitButton = document.getElementById("suggestion-submit");
 const suggestionStatus = document.getElementById("suggestion-status");
+const suggestionSimpleTab = document.getElementById("suggestion-simple-tab");
+const suggestionVisualTab = document.getElementById("suggestion-visual-tab");
+const suggestionSimplePanel = document.getElementById("suggestion-simple-panel");
+const suggestionVisualPanel = document.getElementById("suggestion-visual-panel");
+const visualSuggestionRoot = document.getElementById("visual-suggestion-root");
 
-const suggestionsApiUrl = getSuggestionsApiUrl();
+const visualSuggestionEditor = createVisualSuggestionEditor({
+  root: visualSuggestionRoot,
+  getFamilyChart: () => window.f3,
+  onRequestClose: closeSuggestionDialog
+});
 
 const state = {
   currentNodes: [],
@@ -43,9 +58,9 @@ const state = {
 const isLocalRuntime = isLocalEditingRuntime();
 
 let encryptedPayloadPromise;
+let suggestionDialogReturnFocusTarget = null;
 
 window.addEventListener("DOMContentLoaded", () => {
-  encryptedPayloadPromise = loadPayload();
   void detectLocalSaveSupport();
   attemptSessionRestore();
 
@@ -59,8 +74,16 @@ window.addEventListener("DOMContentLoaded", () => {
   suggestionForm.addEventListener("submit", submitSuggestion);
   suggestionCancelButton.addEventListener("click", closeSuggestionDialog);
   suggestionCloseButton.addEventListener("click", closeSuggestionDialog);
-  suggestionDialog.addEventListener("close", () => setSuggestionStatus(""));
-  guestSuggestButton.classList.toggle("is-hidden", !suggestionsApiUrl);
+  suggestionSimpleTab.addEventListener("click", () => setSuggestionMode("simple"));
+  suggestionVisualTab.addEventListener("click", () => setSuggestionMode("visual"));
+  suggestionSimpleTab.parentElement.addEventListener("keydown", handleSuggestionTabKeys);
+  suggestionDialog.addEventListener("close", finalizeSuggestionDialogClose);
+  suggestionDialog.addEventListener("cancel", (event) => {
+    if (suggestionSubmitButton.disabled || !visualSuggestionEditor.requestDiscard()) {
+      event.preventDefault();
+    }
+  });
+  guestSuggestButton.classList.remove("is-hidden");
   syncToolbar();
 });
 
@@ -144,7 +167,7 @@ function attemptSessionRestore() {
 }
 
 async function unlock(password) {
-  const payload = await encryptedPayloadPromise;
+  const payload = await getEncryptedPayload();
   const textEncoder = new TextEncoder();
   const passwordKey = await crypto.subtle.importKey(
     "raw",
@@ -215,7 +238,7 @@ function renderTree(nodes) {
       .setCardClickOpen(card)
       .setEditFirst(true)
       .setOnChange(() => {
-        state.currentNodes = editor.exportData();
+        state.currentNodes = normalizeEditorExport(editor.exportData());
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(state.currentNodes));
         syncToolbar("Editing locally. Save when you are ready.");
       })
@@ -414,7 +437,7 @@ function syncToolbar(message = "") {
   editButton.classList.toggle("is-hidden", !inTree || !canEdit || state.isEditing);
   discardButton.classList.toggle("is-hidden", !inTree || !canEdit || !state.isEditing);
   saveButton.classList.toggle("is-hidden", !inTree || !canEdit || !state.isEditing);
-  suggestButton.classList.toggle("is-hidden", !inTree || !suggestionsApiUrl);
+  suggestButton.classList.toggle("is-hidden", !inTree);
 
   editButton.disabled = !state.currentPassword || state.isSaving;
   discardButton.disabled = state.isSaving;
@@ -458,60 +481,79 @@ function syncToolbar(message = "") {
   treeStatus.textContent = "Local server detected. Click Edit to make changes.";
 }
 
-function getSuggestionsApiUrl() {
-  const value = window.FAMILY_TREE_CONFIG?.suggestionsApiUrl;
-  if (typeof value !== "string" || !/^https:\/\//i.test(value)) {
-    return "";
-  }
-  return value.replace(/\/$/, "");
-}
-
-function openSuggestionDialog() {
-  if (!suggestionsApiUrl) {
-    return;
-  }
-
+function openSuggestionDialog(event) {
+  const opener = event?.currentTarget;
+  suggestionDialogReturnFocusTarget = opener instanceof HTMLElement
+    ? opener
+    : document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
   suggestionForm.reset();
   setSuggestionStatus("");
+  setSuggestionMode("simple", { focus: false });
   suggestionDialog.showModal();
   document.getElementById("suggestion-name").focus();
 }
 
 function closeSuggestionDialog() {
-  if (!suggestionSubmitButton.disabled) {
+  if (!suggestionSubmitButton.disabled && visualSuggestionEditor.requestDiscard()) {
     suggestionDialog.close();
   }
 }
 
+function finalizeSuggestionDialogClose() {
+  setSuggestionStatus("");
+  visualSuggestionEditor.reset();
+  setSuggestionMode("simple", { focus: false });
+  const returnFocusTarget = suggestionDialogReturnFocusTarget;
+  suggestionDialogReturnFocusTarget = null;
+
+  if (returnFocusTarget?.isConnected && !returnFocusTarget.classList.contains("is-hidden")) {
+    returnFocusTarget.focus();
+  }
+}
+
+function setSuggestionMode(mode, { focus = true } = {}) {
+  const isVisual = mode === "visual";
+  suggestionSimpleTab.classList.toggle("is-active", !isVisual);
+  suggestionVisualTab.classList.toggle("is-active", isVisual);
+  suggestionSimpleTab.setAttribute("aria-selected", String(!isVisual));
+  suggestionVisualTab.setAttribute("aria-selected", String(isVisual));
+  suggestionSimpleTab.tabIndex = isVisual ? -1 : 0;
+  suggestionVisualTab.tabIndex = isVisual ? 0 : -1;
+  suggestionSimplePanel.hidden = isVisual;
+  suggestionVisualPanel.hidden = !isVisual;
+  suggestionDialog.classList.toggle("is-visual-mode", isVisual);
+
+  if (isVisual) {
+    void visualSuggestionEditor.activate();
+    if (focus) suggestionVisualTab.focus();
+  } else if (focus) {
+    document.getElementById("suggestion-name").focus();
+  }
+}
+
+function handleSuggestionTabKeys(event) {
+  if (!new Set(["ArrowLeft", "ArrowRight", "Home", "End"]).has(event.key)) return;
+  event.preventDefault();
+  const visual = event.key === "ArrowRight" || event.key === "End";
+  setSuggestionMode(visual ? "visual" : "simple");
+  (visual ? suggestionVisualTab : suggestionSimpleTab).focus();
+}
+
 async function submitSuggestion(event) {
   event.preventDefault();
-
-  if (!suggestionsApiUrl) {
-    setSuggestionStatus("Suggestion submission is not configured.", true);
-    return;
-  }
-
   const formData = new FormData(suggestionForm);
-  const payload = Object.fromEntries(formData.entries());
+  const payload = buildTextSuggestionRequest(Object.fromEntries(formData.entries()));
   suggestionSubmitButton.disabled = true;
   setSuggestionStatus("Sending suggestion...");
 
   try {
-    const response = await fetch(suggestionsApiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(result.error || "Unable to send the suggestion.");
-    }
-
+    const result = await submitSuggestionRequest(payload);
     suggestionForm.reset();
-    setSuggestionStatus("Thank you. Your suggestion was sent for review.");
+    setSuggestionStatus(`Thank you. Your suggestion was sent for review. Reference ID: ${result.id}`);
   } catch (error) {
-    console.error(error);
+    document.getElementById("suggestion-code").value = "";
     setSuggestionStatus(error.message || "Unable to send the suggestion. Try again later.", true);
   } finally {
     suggestionSubmitButton.disabled = false;
@@ -521,6 +563,16 @@ async function submitSuggestion(event) {
 function setSuggestionStatus(message, isError = false) {
   suggestionStatus.textContent = message;
   suggestionStatus.classList.toggle("is-error", isError);
+}
+
+function getEncryptedPayload() {
+  if (!encryptedPayloadPromise) {
+    encryptedPayloadPromise = loadPayload().catch((error) => {
+      encryptedPayloadPromise = null;
+      throw error;
+    });
+  }
+  return encryptedPayloadPromise;
 }
 
 function hasUnsavedChanges() {
@@ -533,6 +585,17 @@ function stringifyNodes(nodes) {
 
 function cloneNodes(nodes) {
   return JSON.parse(JSON.stringify(nodes));
+}
+
+function normalizeEditorExport(nodes) {
+  return nodes.map((node) => ({
+    ...node,
+    rels: {
+      parents: [...(node.rels?.parents ?? [])],
+      children: [...(node.rels?.children ?? [])],
+      spouses: [...(node.rels?.spouses ?? [])]
+    }
+  }));
 }
 
 function isLocalEditingRuntime() {

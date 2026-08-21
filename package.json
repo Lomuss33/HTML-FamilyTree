@@ -6,7 +6,11 @@
   "scripts": {
     "local": "node scripts/local-server.mjs",
     "encrypt": "node scripts/encrypt-family.mjs",
+    "enable:all-anchors": "node scripts/enable-all-public-anchors.mjs",
+    "generate:anchors": "node scripts/generate-public-anchors.mjs",
+    "validate:family": "node scripts/validate-family-data.mjs",
     "validate": "node scripts/validate-public-build.mjs",
-    "build": "npm run encrypt && npm run validate"
+    "test": "node --test test/*.test.mjs api/test/*.test.mjs",
+    "build": "npm run validate:family && npm run encrypt && npm run generate:anchors && npm run validate"
   }
 }

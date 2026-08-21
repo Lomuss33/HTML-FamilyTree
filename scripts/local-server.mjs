@@ -1,6 +1,9 @@
 import http from "node:http";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
+import { validateFamilyData } from "./validate-family-data.mjs";
 
 const rootDir = path.resolve(".");
 const host = "127.0.0.1";
@@ -44,24 +47,29 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(port, host, () => {
-  console.log(`Local family tree server running at http://${host}:${port}`);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  server.listen(port, host, () => {
+    console.log(`Local family tree server running at http://${host}:${port}`);
+  });
+}
 
 async function handleSave(request, response) {
-  const body = await readJsonBody(request);
-  const privateJson = typeof body?.privateJson === "string" ? body.privateJson : "";
-  const encryptedJson = typeof body?.encryptedJson === "string" ? body.encryptedJson : "";
-
-  if (!privateJson || !encryptedJson) {
-    return sendJson(response, 400, { error: "privateJson and encryptedJson are required." });
+  let privateJson;
+  let encryptedJson;
+  try {
+    const body = await readJsonBody(request);
+    privateJson = typeof body?.privateJson === "string" ? body.privateJson : "";
+    encryptedJson = typeof body?.encryptedJson === "string" ? body.encryptedJson : "";
+    validateSavePayload(privateJson, encryptedJson);
+  } catch (error) {
+    return sendJson(response, 400, {
+      error: error instanceof Error ? error.message : String(error)
+    });
   }
 
-  validateJson(privateJson, "Private JSON");
-  validateJson(encryptedJson, "Encrypted JSON");
-
-  await writeFile(path.join(rootDir, "data", "family.private.json"), privateJson, "utf8");
-  await writeFile(path.join(rootDir, "data", "family.enc.json"), encryptedJson, "utf8");
+  const privatePath = path.join(rootDir, "data", "family.private.json");
+  const encryptedPath = path.join(rootDir, "data", "family.enc.json");
+  await saveFamilyFiles({ privateJson, encryptedJson, privatePath, encryptedPath });
 
   return sendJson(response, 200, { ok: true });
 }
@@ -117,11 +125,66 @@ async function readJsonBody(request) {
   return JSON.parse(body || "{}");
 }
 
-function validateJson(value, label) {
+export function validateSavePayload(privateJson, encryptedJson) {
+  if (!privateJson || !encryptedJson) {
+    throw new Error("privateJson and encryptedJson are required.");
+  }
+  const privateNodes = parseJson(privateJson, "Private JSON");
+  validateFamilyData(privateNodes);
+  validateEncryptedPayload(parseJson(encryptedJson, "Encrypted JSON"));
+  return privateNodes;
+}
+
+export async function saveFamilyFiles({ privateJson, encryptedJson, privatePath, encryptedPath }) {
+  validateSavePayload(privateJson, encryptedJson);
+  await writeFilesFailBeforeReplace([
+    [privatePath, privateJson],
+    [encryptedPath, encryptedJson]
+  ]);
+}
+
+function parseJson(value, label) {
   try {
-    JSON.parse(value);
+    return JSON.parse(value);
   } catch {
     throw new Error(`${label} is not valid JSON.`);
+  }
+}
+
+function validateEncryptedPayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("Encrypted JSON must be an encryption payload object.");
+  }
+  if (payload.version !== 1 || payload.kdf !== "PBKDF2" || payload.hash !== "SHA-256") {
+    throw new Error("Encrypted JSON uses an unsupported encryption format.");
+  }
+  if (!Number.isInteger(payload.iterations) || payload.iterations < 100000) {
+    throw new Error("Encrypted JSON has an invalid PBKDF2 iteration count.");
+  }
+  for (const field of ["salt", "iv", "ciphertext"]) {
+    if (typeof payload[field] !== "string" || !payload[field]) {
+      throw new Error(`Encrypted JSON field "${field}" must be a non-empty string.`);
+    }
+  }
+}
+
+async function writeFilesFailBeforeReplace(entries) {
+  const temporaryFiles = [];
+  try {
+    for (const [targetPath, content] of entries) {
+      const temporaryPath = path.join(
+        path.dirname(targetPath),
+        `.${path.basename(targetPath)}.${randomUUID()}.tmp`
+      );
+      await writeFile(temporaryPath, content, "utf8");
+      temporaryFiles.push([temporaryPath, targetPath]);
+    }
+
+    for (const [temporaryPath, targetPath] of temporaryFiles) {
+      await rename(temporaryPath, targetPath);
+    }
+  } finally {
+    await Promise.all(temporaryFiles.map(([temporaryPath]) => rm(temporaryPath, { force: true })));
   }
 }
 

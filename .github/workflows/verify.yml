@@ -18,7 +18,18 @@ jobs:
         with:
           node-version: 22
       - run: node --check assets/app.js
+      - run: node --check assets/suggestions/draft-model.js
+      - run: node --check assets/suggestions/graph-adapter.js
+      - run: node --check assets/suggestions/public-anchor-catalog.js
+      - run: node --check assets/suggestions/submission-api.js
+      - run: node --check assets/suggestions/visual-editor.js
+      - run: node --check api/src/submit-suggestion.mjs
+      - run: node --check api/src/validate-graph-suggestion.mjs
+      - run: node --check scripts/enable-all-public-anchors.mjs
       - run: node --check scripts/encrypt-family.mjs
+      - run: node --check scripts/generate-public-anchors.mjs
       - run: node --check scripts/local-server.mjs
+      - run: node --check scripts/validate-family-data.mjs
       - run: node --check scripts/validate-public-build.mjs
-      - run: node --test api/test/*.test.mjs
+      - run: npm test
+      - run: npm run validate

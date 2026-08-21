@@ -1,0 +1,11 @@
+[
+  {
+    "id": "anchor",
+    "data": { "gender": "M" },
+    "rels": { "parents": [], "children": [], "spouses": [] },
+    "privacy": {
+      "publicAnchor": true,
+      "publicLabel": ""
+    }
+  }
+]
