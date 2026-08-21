@@ -115,6 +115,11 @@ a public fingerprint of the merge-relevant ids and topology. It changes when
 the canonical graph changes and will later prevent applying a reviewed patch
 against stale relationship state.
 
+The same generator writes `api/generated/canonical-revision.json`, containing
+only schema version, `catalogVersion`, and `sourceRevision`. The admin Lambda
+uses this generated fingerprint to block stale graph acceptance. It does not
+receive the private canonical array.
+
 ## Workflow integration
 
 - `scripts/encrypt-family.mjs` validates before writing encrypted output.
@@ -122,7 +127,11 @@ against stale relationship state.
   replacing either target. Both temporary files are fully written before
   replacement starts.
 - `scripts/generate-public-anchors.mjs` validates before generating public
-  artifacts.
+  artifacts and the backend-only revision fingerprint.
+- `scripts/apply-family-additions.mjs` validates a downloaded additions-only
+  patch against the current source revision, validates the resulting family,
+  creates an ignored plaintext backup, and regenerates encrypted/public
+  artifacts. It has no commit or push behavior.
 - `scripts/validate-public-build.mjs` validates real private data when it is
   available and uses the tracked fictional template for CI-safe structural
   checks when it is not.

@@ -17,14 +17,16 @@ const privatePath = path.resolve("data/family.private.json");
 const templatePath = path.resolve("data/family.template.json");
 const catalogPath = path.resolve("data/family.anchors.public.json");
 const allowlistPath = path.resolve("api/generated/public-anchor-allowlist.json");
+const revisionPath = path.resolve("api/generated/canonical-revision.json");
 const siteConfigPath = path.resolve("assets/site-config.js");
 const REVISION_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const CATALOG_KEYS = ["anchors", "catalogVersion", "schemaVersion", "sourceRevision"];
 const ANCHOR_REQUIRED_KEYS = ["displayLabel", "id"];
 const ANCHOR_OPTIONAL_KEYS = ["branchLabel", "lifespanLabel"];
 const ALLOWLIST_KEYS = ["anchorIds", "catalogVersion"];
+const REVISION_KEYS = ["catalogVersion", "schemaVersion", "sourceRevision"];
 
-export function validateGeneratedArtifacts(catalog, allowlist) {
+export function validateGeneratedArtifacts(catalog, allowlist, revision) {
   const issues = [];
 
   requireExactKeys(catalog, CATALOG_KEYS, "Public anchor catalog", issues);
@@ -96,6 +98,19 @@ export function validateGeneratedArtifacts(catalog, allowlist) {
     issues.push("Public catalog and backend allowlist catalogVersion values do not match.");
   }
 
+  requireExactKeys(revision, REVISION_KEYS, "Backend canonical revision", issues);
+  if (revision?.schemaVersion !== 1) {
+    issues.push("Backend canonical revision schemaVersion must be 1.");
+  }
+  validateRevision(revision?.catalogVersion, "Backend canonical revision catalogVersion", issues);
+  validateRevision(revision?.sourceRevision, "Backend canonical revision sourceRevision", issues);
+  if (catalog?.catalogVersion !== revision?.catalogVersion) {
+    issues.push("Public catalog and backend canonical revision catalogVersion values do not match.");
+  }
+  if (catalog?.sourceRevision !== revision?.sourceRevision) {
+    issues.push("Public catalog and backend canonical revision sourceRevision values do not match.");
+  }
+
   const catalogIds = Array.isArray(catalog?.anchors) ? catalog.anchors.map((anchor) => anchor.id) : [];
   const allowlistIds = Array.isArray(allowlist?.anchorIds) ? allowlist.anchorIds : [];
   if (Array.isArray(catalog?.anchors)) {
@@ -131,7 +146,8 @@ async function runValidation() {
 
   const catalog = await readJson(catalogPath, "public anchor catalog");
   const allowlist = await readJson(allowlistPath, "backend public-anchor allowlist");
-  const artifactSummary = validateGeneratedArtifacts(catalog, allowlist);
+  const revision = await readJson(revisionPath, "backend canonical revision");
+  const artifactSummary = validateGeneratedArtifacts(catalog, allowlist, revision);
   validatePublicRuntimeConfig(await readFile(siteConfigPath, "utf8"));
 
   const privateExists = await fileExists(privatePath);
@@ -146,6 +162,9 @@ async function runValidation() {
     }
     if (stableStringify(expected.allowlist) !== stableStringify(allowlist)) {
       throw new Error("Backend anchor allowlist is stale. Run npm run generate:anchors from the current private family source.");
+    }
+    if (stableStringify(expected.revision) !== stableStringify(revision)) {
+      throw new Error("Backend canonical revision is stale. Run npm run generate:anchors from the current private family source.");
     }
     await validatePlaintextLeaks(canonicalNodes);
   } else {
@@ -176,7 +195,8 @@ async function validatePlaintextLeaks(privateNodes) {
     "node_modules",
     "data/family.private.json",
     "data/family.anchors.public.json",
-    "api/generated/public-anchor-allowlist.json"
+    "api/generated/public-anchor-allowlist.json",
+    "api/generated/canonical-revision.json"
   ]);
   const files = await collectFiles(repoRoot, ignored);
   const findings = [];

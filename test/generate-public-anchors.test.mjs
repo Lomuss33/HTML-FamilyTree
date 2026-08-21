@@ -9,7 +9,7 @@ const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fix
 
 test("generates a minimal public catalog and matching backend allowlist", async () => {
   const family = await fixture("valid-public-anchor.json");
-  const { catalog, allowlist } = buildPublicAnchorArtifacts(family);
+  const { catalog, allowlist, revision } = buildPublicAnchorArtifacts(family);
 
   assert.equal(catalog.schemaVersion, 1);
   assert.match(catalog.catalogVersion, /^sha256:[a-f0-9]{64}$/);
@@ -23,6 +23,11 @@ test("generates a minimal public catalog and matching backend allowlist", async 
   assert.deepEqual(allowlist, {
     catalogVersion: catalog.catalogVersion,
     anchorIds: ["approved-anchor"]
+  });
+  assert.deepEqual(revision, {
+    schemaVersion: 1,
+    catalogVersion: catalog.catalogVersion,
+    sourceRevision: catalog.sourceRevision
   });
 });
 

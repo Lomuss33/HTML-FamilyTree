@@ -37,6 +37,11 @@ export function buildPublicAnchorArtifacts(family, options = {}) {
     allowlist: {
       catalogVersion,
       anchorIds
+    },
+    revision: {
+      schemaVersion: PUBLIC_CATALOG_SCHEMA_VERSION,
+      catalogVersion,
+      sourceRevision
     }
   };
 }
@@ -45,24 +50,28 @@ export async function generatePublicAnchorFiles({
   inputPath = "data/family.private.json",
   catalogOutputPath = "data/family.anchors.public.json",
   allowlistOutputPath = "api/generated/public-anchor-allowlist.json",
+  revisionOutputPath = "api/generated/canonical-revision.json",
   mainPersonId
 } = {}) {
   const resolvedInput = path.resolve(inputPath);
   const resolvedCatalogOutput = path.resolve(catalogOutputPath);
   const resolvedAllowlistOutput = path.resolve(allowlistOutputPath);
+  const resolvedRevisionOutput = path.resolve(revisionOutputPath);
   const family = JSON.parse(await readFile(resolvedInput, "utf8"));
   const artifacts = buildPublicAnchorArtifacts(family, { mainPersonId });
 
   await writeJsonPairFailBeforeReplace([
     [resolvedCatalogOutput, artifacts.catalog],
-    [resolvedAllowlistOutput, artifacts.allowlist]
+    [resolvedAllowlistOutput, artifacts.allowlist],
+    [resolvedRevisionOutput, artifacts.revision]
   ]);
 
   return {
     ...artifacts,
     inputPath: resolvedInput,
     catalogOutputPath: resolvedCatalogOutput,
-    allowlistOutputPath: resolvedAllowlistOutput
+    allowlistOutputPath: resolvedAllowlistOutput,
+    revisionOutputPath: resolvedRevisionOutput
   };
 }
 
@@ -116,6 +125,7 @@ async function runCli() {
       inputPath: options.input,
       catalogOutputPath: options["catalog-output"],
       allowlistOutputPath: options["allowlist-output"],
+      revisionOutputPath: options["revision-output"],
       mainPersonId: options["main-person-id"]
     });
     console.log(`Generated ${result.catalog.anchors.length} public anchor${result.catalog.anchors.length === 1 ? "" : "s"}.`);
@@ -123,6 +133,7 @@ async function runCli() {
     console.log(`Source revision: ${result.catalog.sourceRevision}`);
     console.log(`Public catalog: ${result.catalogOutputPath}`);
     console.log(`Backend allowlist: ${result.allowlistOutputPath}`);
+    console.log(`Backend canonical revision: ${result.revisionOutputPath}`);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

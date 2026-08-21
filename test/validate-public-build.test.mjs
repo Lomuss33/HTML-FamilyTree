@@ -13,7 +13,7 @@ const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fix
 
 test("accepts matching structurally minimal generated artifacts", async () => {
   const artifacts = buildPublicAnchorArtifacts(await fixture("valid-public-anchor.json"));
-  const result = validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist);
+  const result = validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist, artifacts.revision);
   assert.equal(result.anchorCount, 1);
   assert.equal(result.catalogVersion, artifacts.catalog.catalogVersion);
 });
@@ -23,7 +23,7 @@ test("rejects catalog fields that could expose canonical person structures", asy
   artifacts.catalog.anchors[0].data = { birthday: "private" };
   artifacts.catalog.anchors[0].rels = { parents: [] };
   assert.throws(
-    () => validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist),
+    () => validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist, artifacts.revision),
     /forbidden field "data"/
   );
 });
@@ -32,7 +32,7 @@ test("rejects catalog/backend version mismatch", async () => {
   const artifacts = buildPublicAnchorArtifacts(await fixture("valid-public-anchor.json"));
   artifacts.allowlist.catalogVersion = `sha256:${"0".repeat(64)}`;
   assert.throws(
-    () => validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist),
+    () => validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist, artifacts.revision),
     /catalogVersion values do not match/
   );
 });
@@ -41,7 +41,7 @@ test("rejects catalog content changed without a new deterministic version", asyn
   const artifacts = buildPublicAnchorArtifacts(await fixture("valid-public-anchor.json"));
   artifacts.catalog.anchors[0].displayLabel = "Changed reviewed label";
   assert.throws(
-    () => validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist),
+    () => validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist, artifacts.revision),
     /catalogVersion does not match its normalized anchor content/
   );
 });
@@ -50,8 +50,17 @@ test("rejects catalog/backend id mismatch", async () => {
   const artifacts = buildPublicAnchorArtifacts(await fixture("valid-public-anchor.json"));
   artifacts.allowlist.anchorIds = ["different-anchor"];
   assert.throws(
-    () => validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist),
+    () => validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist, artifacts.revision),
     /anchor ids do not exactly match/
+  );
+});
+
+test("rejects a backend revision artifact that does not match the public catalog", async () => {
+  const artifacts = buildPublicAnchorArtifacts(await fixture("valid-public-anchor.json"));
+  artifacts.revision.sourceRevision = `sha256:${"f".repeat(64)}`;
+  assert.throws(
+    () => validateGeneratedArtifacts(artifacts.catalog, artifacts.allowlist, artifacts.revision),
+    /sourceRevision values do not match/
   );
 });
 

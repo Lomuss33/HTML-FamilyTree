@@ -96,6 +96,19 @@ The backend allowlist artifact is
 The submission Lambda loads this allowlist to reject arbitrary canonical ids.
 It also rejects a graph whose `anchorCatalogVersion` differs from this artifact.
 
+The admin Lambda also receives `api/generated/canonical-revision.json`:
+
+```json
+{
+  "schemaVersion": 1,
+  "catalogVersion": "sha256:...",
+  "sourceRevision": "sha256:..."
+}
+```
+
+This artifact contains fingerprints only. It contains no people, labels,
+relationships, avatars, or arbitrary canonical fields.
+
 ## Catalog version
 
 `catalogVersion` is a domain-separated SHA-256 digest of exactly:
@@ -108,8 +121,9 @@ It excludes `sourceRevision`. Therefore private graph changes do not change the
 catalog version unless the public catalog itself changes.
 
 Visual drafts preserve both revisions. Graph submissions send them so Lambda
-can enforce the catalog version. Lambda stores `sourceRevision` for later admin
-review but intentionally cannot compare it with the private canonical source.
+can enforce the catalog version. The submission Lambda stores `sourceRevision`.
+The isolated admin Lambda can compare it with the generated revision artifact,
+but neither Lambda receives the private canonical source.
 
 `sourceRevision` is documented in `family-data-invariants.md`. It identifies
 merge-relevant canonical graph state and will later be used during review and

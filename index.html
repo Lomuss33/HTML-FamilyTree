@@ -51,6 +51,9 @@
           <button class="secondary-button is-hidden" id="discard-button" type="button">Discard</button>
           <button class="primary-button is-hidden" id="save-button" type="button">Save</button>
           <button class="secondary-button is-hidden" id="suggest-button" type="button">Suggest an update</button>
+          <button class="secondary-button is-hidden admin-review-button" id="admin-review-button" type="button">
+            Review <span class="admin-count-badge" id="admin-pending-count" hidden></span>
+          </button>
           <button class="secondary-button" id="clear-session" type="button">Lock</button>
         </div>
       </header>
@@ -287,6 +290,135 @@
               <button class="primary-button" id="visual-success-close" type="button">Return to Family Tree</button>
             </section>
           </section>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog class="admin-dialog" id="admin-dialog" aria-labelledby="admin-dialog-title">
+    <div class="admin-review-shell">
+      <header class="admin-review-header">
+        <div>
+          <p class="eyebrow">Authenticated review</p>
+          <h2 id="admin-dialog-title">Pending suggestions</h2>
+          <p>Viewing or reviewing a suggestion never changes the canonical family tree.</p>
+        </div>
+        <button class="dialog-close" id="admin-dialog-close" type="button" aria-label="Close administrator review">×</button>
+      </header>
+
+      <section class="admin-auth-view" id="admin-auth-view">
+        <div class="admin-auth-card">
+          <span class="admin-lock-mark" aria-hidden="true">◆</span>
+          <h3>Administrator sign-in required</h3>
+          <p>This is separate from both the family password and the guest submission code.</p>
+          <button class="primary-button" id="admin-sign-in" type="button">Sign in with Cognito</button>
+          <p class="status-message" id="admin-auth-status" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="admin-workspace" id="admin-workspace" hidden>
+        <div class="admin-workspace-toolbar">
+          <div class="admin-filter-row">
+            <label class="field compact-field">
+              <span>Status</span>
+              <select id="admin-status-filter">
+                <option value="pending">Pending</option>
+                <option value="accepted">Accepted</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </label>
+            <label class="field compact-field">
+              <span>Type</span>
+              <select id="admin-type-filter">
+                <option value="">All</option>
+                <option value="text">Text</option>
+                <option value="graph">Visual</option>
+              </select>
+            </label>
+            <button class="secondary-button" id="admin-refresh" type="button">Refresh</button>
+          </div>
+          <div class="admin-session-meta">
+            <span id="admin-session-label"></span>
+            <button class="secondary-button" id="admin-sign-out" type="button">Sign out</button>
+          </div>
+        </div>
+
+        <p class="status-message" id="admin-workspace-status" role="status" aria-live="polite"></p>
+        <div class="admin-review-layout">
+          <aside class="admin-suggestion-rail" aria-label="Suggestions">
+            <div class="admin-suggestion-list" id="admin-suggestion-list"></div>
+            <button class="secondary-button admin-load-more" id="admin-load-more" type="button" hidden>Load more</button>
+          </aside>
+
+          <article class="admin-suggestion-detail" id="admin-suggestion-detail">
+            <div class="admin-empty-detail" id="admin-empty-detail">
+              <h3>Select a suggestion</h3>
+              <p>Choose an item from the side rail to inspect its submitted content.</p>
+            </div>
+
+            <div id="admin-detail-content" hidden>
+              <div class="admin-detail-heading">
+                <div>
+                  <div class="admin-detail-badges">
+                    <span class="visual-node-badge" id="admin-detail-type"></span>
+                    <span class="admin-status-pill" id="admin-detail-status"></span>
+                  </div>
+                  <h3 id="admin-detail-title"></h3>
+                  <p id="admin-detail-id"></p>
+                </div>
+                <time id="admin-detail-date"></time>
+              </div>
+
+              <dl class="admin-submitter-grid">
+                <div><dt>Submitter</dt><dd id="admin-detail-name"></dd></div>
+                <div><dt>Email</dt><dd id="admin-detail-email"></dd></div>
+                <div><dt>Relationship</dt><dd id="admin-detail-relationship"></dd></div>
+              </dl>
+
+              <section class="admin-text-detail" id="admin-text-detail" hidden>
+                <h4>Submitted suggestion</h4>
+                <p id="admin-detail-message"></p>
+              </section>
+
+              <section class="admin-graph-detail" id="admin-graph-detail" hidden>
+                <div class="admin-graph-heading">
+                  <div>
+                    <h4>Visual branch review</h4>
+                    <p id="admin-anchor-id"></p>
+                  </div>
+                  <div class="admin-graph-modes" role="group" aria-label="Graph review mode">
+                    <button class="secondary-button is-active" type="button" data-admin-graph-mode="original">Original</button>
+                    <button class="secondary-button" type="button" data-admin-graph-mode="suggestion">Suggestion</button>
+                    <button class="secondary-button" type="button" data-admin-graph-mode="overlay">Overlay</button>
+                  </div>
+                </div>
+                <div class="admin-graph-stage">
+                  <div class="f3 admin-review-chart" id="admin-review-chart" aria-label="Suggestion review graph"></div>
+                </div>
+                <div class="admin-graph-summary">
+                  <section><h5>Proposed people</h5><ul id="admin-graph-people"></ul></section>
+                  <section><h5>Relationships</h5><ul id="admin-graph-relationships"></ul></section>
+                </div>
+                <details class="admin-patch-preview" id="admin-patch-preview">
+                  <summary>Additive patch preview</summary>
+                  <pre id="admin-patch-json"></pre>
+                </details>
+              </section>
+
+              <section class="admin-review-actions">
+                <label class="field">
+                  <span>Reviewer note <em>(optional)</em></span>
+                  <textarea id="admin-review-note" rows="3" maxlength="2000"></textarea>
+                </label>
+                <p class="status-message" id="admin-review-status" role="status" aria-live="polite"></p>
+                <div class="admin-action-buttons">
+                  <button class="secondary-button" id="admin-mark-pending" type="button">Mark pending</button>
+                  <button class="danger-button" id="admin-reject" type="button">Reject</button>
+                  <button class="primary-button" id="admin-accept" type="button">Accept</button>
+                </div>
+              </section>
+            </div>
+          </article>
         </div>
       </section>
     </div>

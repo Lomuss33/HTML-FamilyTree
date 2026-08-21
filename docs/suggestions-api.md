@@ -1,13 +1,15 @@
 # Guest Suggestions API
 
 This repository's encrypted family tree stays a static GitHub Pages site. This
-optional AWS SAM stack adds a separate, write-only guest suggestion channel.
-It never receives the tree encryption password or the decrypted tree itself.
+AWS SAM stack provides a write-only guest suggestion channel and a separate,
+JWT-authenticated administrator review channel. It never receives the tree
+encryption password or the decrypted tree itself.
 
 ## What is deployed
 
-- API Gateway HTTP API: `POST /suggestions`, HTTPS by default
-- Lambda: validates text and additive graph suggestions and stores a normalized record
+- API Gateway HTTP API: public `POST /suggestions` plus authenticated `/admin/*` routes
+- Submission Lambda: validates text and additive graph suggestions and stores a normalized record
+- Admin Lambda: lists, reads, and status-updates suggestions after JWT authorization
 - DynamoDB: on-demand table of pending suggestions
 - AWS X-Ray tracing for the Lambda function
 - API Gateway throttling: two requests/second with a burst of five
@@ -15,8 +17,9 @@ It never receives the tree encryption password or the decrypted tree itself.
 - DynamoDB TTL: suggestions become eligible for removal after the selected
   retention period
 
-The endpoint is deliberately write-only. Review suggestions in the DynamoDB
-console or add an authenticated admin workflow later.
+The public endpoint remains deliberately write-only. The admin endpoints are
+isolated behind a Cognito user pool and API Gateway JWT authorizer. See
+`admin-review.md` for that workflow.
 
 ## Before deployment
 
@@ -54,7 +57,14 @@ Replace the empty value in `assets/site-config.js` with the full output URL:
 
 ```js
 window.FAMILY_TREE_CONFIG = Object.freeze({
-  suggestionsApiUrl: "https://example.execute-api.eu-central-1.amazonaws.com/suggestions"
+  suggestionsApiUrl: "https://example.execute-api.eu-north-1.amazonaws.com/suggestions",
+  adminApiUrl: "https://example.execute-api.eu-north-1.amazonaws.com/admin/suggestions",
+  adminAuth: Object.freeze({
+    clientId: "public-cognito-app-client-id",
+    domain: "https://example.auth.eu-north-1.amazoncognito.com",
+    redirectUri: "https://example.github.io/HTML-FamilyTree/",
+    logoutUri: "https://example.github.io/HTML-FamilyTree/"
+  })
 });
 ```
 
@@ -162,6 +172,6 @@ and validation category only; request bodies and personal data are not logged.
 - Rotate the submission access code with a CloudFormation parameter update.
 - Regenerate and commit both anchor artifacts before building Lambda whenever
   public anchor membership or labels change.
-- Do not add an unauthenticated GET endpoint for suggestion data.
+- Never remove the JWT authorizer from the admin GET/PATCH routes.
 - Delete the CloudFormation stack to remove the AWS resources when the feature
   is no longer needed. Back up/export any suggestions first.

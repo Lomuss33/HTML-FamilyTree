@@ -3,6 +3,7 @@ import {
   buildTextSuggestionRequest,
   submitSuggestionRequest
 } from "./suggestions/submission-api.js";
+import { createAdminReviewWorkspace } from "./admin/review-workspace.js";
 
 const SESSION_KEY = "family-tree-session-v1";
 const PAYLOAD_URL = "./data/family.enc.json";
@@ -32,6 +33,9 @@ const suggestionVisualTab = document.getElementById("suggestion-visual-tab");
 const suggestionSimplePanel = document.getElementById("suggestion-simple-panel");
 const suggestionVisualPanel = document.getElementById("suggestion-visual-panel");
 const visualSuggestionRoot = document.getElementById("visual-suggestion-root");
+const adminReviewButton = document.getElementById("admin-review-button");
+const adminPendingCount = document.getElementById("admin-pending-count");
+const adminDialog = document.getElementById("admin-dialog");
 
 const visualSuggestionEditor = createVisualSuggestionEditor({
   root: visualSuggestionRoot,
@@ -55,13 +59,22 @@ const state = {
   openEditorOnRender: false
 };
 
+const adminReviewWorkspace = createAdminReviewWorkspace({
+  root: adminDialog,
+  openButton: adminReviewButton,
+  countBadge: adminPendingCount,
+  getCanonicalNodes: () => cloneNodes(state.currentNodes),
+  getFamilyChart: () => window.f3
+});
+
 const isLocalRuntime = isLocalEditingRuntime();
 
 let encryptedPayloadPromise;
 let suggestionDialogReturnFocusTarget = null;
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   void detectLocalSaveSupport();
+  await adminReviewWorkspace.initialize();
   attemptSessionRestore();
 
   unlockForm.addEventListener("submit", handleUnlock);
@@ -259,6 +272,7 @@ function showTree() {
   document.body.classList.add("is-tree-mode");
   lockScreen.classList.add("is-hidden");
   treeShell.classList.remove("is-hidden");
+  adminReviewWorkspace.onFamilyUnlocked();
   syncToolbar();
 }
 
@@ -283,6 +297,7 @@ function fromBase64(value) {
 }
 
 function clearSession() {
+  adminReviewWorkspace.onFamilyLocked();
   sessionStorage.removeItem(SESSION_KEY);
   state.currentNodes = [];
   state.savedNodes = [];
@@ -438,6 +453,7 @@ function syncToolbar(message = "") {
   discardButton.classList.toggle("is-hidden", !inTree || !canEdit || !state.isEditing);
   saveButton.classList.toggle("is-hidden", !inTree || !canEdit || !state.isEditing);
   suggestButton.classList.toggle("is-hidden", !inTree);
+  adminReviewButton.classList.toggle("is-hidden", !inTree || !adminReviewWorkspace.configured);
 
   editButton.disabled = !state.currentPassword || state.isSaving;
   discardButton.disabled = state.isSaving;

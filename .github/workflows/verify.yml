@@ -23,6 +23,12 @@ jobs:
       - run: node --check assets/suggestions/public-anchor-catalog.js
       - run: node --check assets/suggestions/submission-api.js
       - run: node --check assets/suggestions/visual-editor.js
+      - run: node --check assets/admin/auth-client.js
+      - run: node --check assets/admin/api-client.js
+      - run: node --check assets/admin/patch-model.js
+      - run: node --check assets/admin/review-graph-adapter.js
+      - run: node --check assets/admin/review-workspace.js
+      - run: node --check api/src/admin-suggestions.mjs
       - run: node --check api/src/submit-suggestion.mjs
       - run: node --check api/src/validate-graph-suggestion.mjs
       - run: node --check scripts/enable-all-public-anchors.mjs
@@ -31,5 +37,6 @@ jobs:
       - run: node --check scripts/local-server.mjs
       - run: node --check scripts/validate-family-data.mjs
       - run: node --check scripts/validate-public-build.mjs
+      - run: node --check scripts/apply-family-additions.mjs
       - run: npm test
       - run: npm run validate

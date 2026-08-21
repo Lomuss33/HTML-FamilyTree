@@ -37,14 +37,18 @@ The readable family data lives only in a local file that is ignored by git.
 - `data/family.template.json`: tracked starter template for creating your own version
 - `data/family.anchors.public.json`: generated, privacy-reviewed public anchor catalog
 - `api/generated/public-anchor-allowlist.json`: matching backend anchor-id allowlist
+- `api/generated/canonical-revision.json`: private-data-free revision fingerprint for review
 - `scripts/local-server.mjs`: local server with direct save API
 - `scripts/encrypt-family.mjs`: encrypts the private JSON into the public payload
 - `scripts/validate-family-data.mjs`: validates canonical ids and graph invariants
 - `scripts/generate-public-anchors.mjs`: generates both public anchor artifacts
 - `scripts/enable-all-public-anchors.mjs`: explicit local bulk opt-in migration
 - `scripts/validate-public-build.mjs`: checks tracked files for plaintext leaks
+- `scripts/apply-family-additions.mjs`: validates and locally applies reviewed additions-only patches
 - `assets/suggestions/`: local guest visual-draft model, public catalog loader,
   Family Chart adapter, and visual workspace controller
+- `assets/admin/`: Cognito PKCE client, admin API client, review workspace,
+  review graph adapter, and deterministic patch generator
 
 ## Make Your Own Version
 
@@ -96,6 +100,7 @@ Public anchor generation additionally writes:
 
 - `data/family.anchors.public.json`
 - `api/generated/public-anchor-allowlist.json`
+- `api/generated/canonical-revision.json`
 
 ## Manual Editing
 
@@ -157,6 +162,26 @@ See `docs/family-data-invariants.md` and `docs/privacy-model.md`.
 The visual workspace never loads the private canonical source or decrypts the
 protected tree. See `docs/visual-suggestions.md` for its schema and security
 boundary.
+
+## Administrator Review
+
+After the family tree is unlocked, the `Review` entry opens a separate Cognito
+sign-in. Cognito authentication is independent of the family password and the
+guest submission code. Authenticated administrators can inspect text and graph
+suggestions, compare Original/Suggestion/Overlay graph views, and set pending,
+accepted, or rejected status.
+
+Accepting a graph downloads a deterministic additions-only JSON patch. The
+browser does not modify canonical data. Review the patch and apply it locally:
+
+```bash
+FAMILY_TREE_PASSWORD='your-local-family-password' \
+  npm run apply:additions -- --patch /path/to/family-additions-ID.json
+```
+
+The applicator validates the current canonical file and revision, prepares all
+generated outputs before replacement, creates an ignored backup under
+`data/backups/`, and validates the public build. See `docs/admin-review.md`.
 
 ## Notes
 

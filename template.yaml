@@ -1,8 +1,20 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  Write-only family tree suggestion API. The encrypted tree remains hosted as
-  static files; this stack stores only pending guest suggestions.
+  Family tree suggestion submission and authenticated admin review API. The
+  encrypted canonical tree remains outside AWS and cannot be mutated by this stack.
+
+Metadata:
+  AWSToolsMetrics:
+    AWSAgentToolkit: aws-cloudformation@2
+  com.aws.cloudformation.Context:
+    version: "1.0"
+    intent: >-
+      Preserve the public write-only suggestion route while adding an isolated,
+      JWT-authorized review plane. See docs/admin-review.md for security boundaries.
+    sources:
+      - docs/suggestions-api.md
+      - docs/admin-review.md
 
 Parameters:
   AllowedOrigin:
@@ -20,6 +32,22 @@ Parameters:
     MinValue: 30
     MaxValue: 3650
     Description: Number of days pending suggestions are retained before DynamoDB TTL eligibility.
+  AdminCallbackUrl:
+    Type: String
+    Default: https://example.github.io/HTML-FamilyTree/
+    AllowedPattern: ^https://[A-Za-z0-9.-]+(?:/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$
+    Description: Exact HTTPS callback URL for the GitHub Pages admin OAuth flow.
+  AdminLogoutUrl:
+    Type: String
+    Default: https://example.github.io/HTML-FamilyTree/
+    AllowedPattern: ^https://[A-Za-z0-9.-]+(?:/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$
+    Description: Exact HTTPS return URL after the Cognito logout flow.
+  AdminAuthDomainPrefix:
+    Type: String
+    MinLength: 8
+    MaxLength: 63
+    AllowedPattern: ^[a-z0-9](?:[a-z0-9-]{6,61}[a-z0-9])$
+    Description: Globally unique Cognito prefix-domain label for admin sign-in.
 
 Globals:
   Function:
@@ -33,6 +61,9 @@ Globals:
 Resources:
   SuggestionsApi:
     Type: AWS::Serverless::HttpApi
+    Metadata:
+      com.aws.cloudformation.Context:
+        intent: Public POST remains unauthenticated; only admin routes use the Cognito JWT authorizer.
     Properties:
       StageName: $default
       DefinitionBody:
@@ -46,7 +77,10 @@ Resources:
           - !Ref AllowedOrigin
         AllowHeaders:
           - content-type
+          - authorization
         AllowMethods:
+          - GET
+          - PATCH
           - POST
         MaxAge: 600
       DefaultRouteSettings:
@@ -55,6 +89,16 @@ Resources:
       AccessLogSettings:
         DestinationArn: !GetAtt SuggestionsApiAccessLogGroup.Arn
         Format: '{"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","responseLength":"$context.responseLength"}'
+      Auth:
+        Authorizers:
+          AdminJwtAuthorizer:
+            AuthorizationScopes:
+              - openid
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.${AWS::URLSuffix}/${AdminUserPool}
+              audience:
+                - !Ref AdminUserPoolClient
 
   SuggestionsApiAccessLogGroup:
     Type: AWS::Logs::LogGroup
@@ -63,6 +107,11 @@ Resources:
 
   SuggestionsTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        intent: Durable suggestion audit records; retain on stack or resource replacement.
     Properties:
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
@@ -102,8 +151,12 @@ Resources:
           SUGGESTION_RETENTION_DAYS: !Ref SuggestionRetentionDays
       Policies:
         - AWSLambdaBasicExecutionRole
-        - DynamoDBWritePolicy:
-            TableName: !Ref SuggestionsTable
+        - Statement:
+            - Sid: PutSuggestionsOnly
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt SuggestionsTable.Arn
       Events:
         SubmitSuggestion:
           Type: HttpApi
@@ -119,6 +172,158 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${SubmitSuggestionFunction}
       RetentionInDays: 14
 
+  AdminUserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        intent: Admin-only identities created by an administrator; never used for guest submissions.
+    Properties:
+      UserPoolTier: LITE
+      DeletionProtection: ACTIVE
+      UsernameAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: false
+      AutoVerifiedAttributes:
+        - email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      MfaConfiguration: "ON"
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 14
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+          TemporaryPasswordValidityDays: 7
+      UserPoolTags:
+        Application: HTML-FamilyTree
+        Environment: production
+
+  AdminUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Metadata:
+      com.aws.cloudformation.Context:
+        intent: Public SPA OAuth client using authorization code plus PKCE; intentionally has no client secret.
+    Properties:
+      ClientName: family-tree-admin-browser
+      UserPoolId: !Ref AdminUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - !Ref AdminCallbackUrl
+      LogoutURLs:
+        - !Ref AdminLogoutUrl
+      DefaultRedirectURI: !Ref AdminCallbackUrl
+      AccessTokenValidity: 15
+      IdTokenValidity: 15
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+      EnableTokenRevocation: true
+      PreventUserExistenceErrors: ENABLED
+
+  AdminUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Metadata:
+      com.aws.cloudformation.Context:
+        intent: Cognito-hosted classic OAuth UI supported by the cost-minimizing Lite user-pool tier.
+    Properties:
+      Domain: !Ref AdminAuthDomainPrefix
+      ManagedLoginVersion: 1
+      UserPoolId: !Ref AdminUserPool
+
+  AdminSuggestionsFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      com.aws.cloudformation.Context:
+        intent: Read and status-update suggestions only after API Gateway JWT validation.
+    Properties:
+      CodeUri: api/
+      Handler: src/admin-suggestions.handler
+      Environment:
+        Variables:
+          SUGGESTIONS_TABLE_NAME: !Ref SuggestionsTable
+          ADMIN_USER_POOL_CLIENT_ID: !Ref AdminUserPoolClient
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Sid: ReadSuggestionRecords
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: !GetAtt SuggestionsTable.Arn
+            - Sid: QuerySuggestionsByStatus
+              Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !Sub ${SuggestionsTable.Arn}/index/status-createdAt-index
+            - Sid: UpdateSuggestionReviewOnly
+              Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+              Resource: !GetAtt SuggestionsTable.Arn
+      Events:
+        ListSuggestions:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SuggestionsApi
+            Path: /admin/suggestions
+            Method: GET
+            PayloadFormatVersion: "2.0"
+            Auth:
+              Authorizer: AdminJwtAuthorizer
+              AuthorizationScopes:
+                - openid
+        GetSuggestion:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SuggestionsApi
+            Path: /admin/suggestions/{id}
+            Method: GET
+            PayloadFormatVersion: "2.0"
+            Auth:
+              Authorizer: AdminJwtAuthorizer
+              AuthorizationScopes:
+                - openid
+        ReviewSuggestion:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SuggestionsApi
+            Path: /admin/suggestions/{id}
+            Method: PATCH
+            PayloadFormatVersion: "2.0"
+            Auth:
+              Authorizer: AdminJwtAuthorizer
+              AuthorizationScopes:
+                - openid
+
+  AdminSuggestionsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AdminSuggestionsFunction}
+      RetentionInDays: 14
+
 Outputs:
   SuggestionsApiUrl:
     Description: Public HTTPS endpoint used by assets/site-config.js.
@@ -126,3 +331,15 @@ Outputs:
   SuggestionsTableName:
     Description: DynamoDB table containing pending suggestions.
     Value: !Ref SuggestionsTable
+  AdminApiUrl:
+    Description: JWT-protected suggestion review collection endpoint.
+    Value: !Sub https://${SuggestionsApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/admin/suggestions
+  AdminUserPoolId:
+    Description: Cognito user pool that contains explicitly created review administrators.
+    Value: !Ref AdminUserPool
+  AdminUserPoolClientId:
+    Description: Public OAuth client identifier used by the static GitHub Pages application.
+    Value: !Ref AdminUserPoolClient
+  AdminAuthDomain:
+    Description: Cognito hosted authentication base URL.
+    Value: !Sub https://${AdminAuthDomainPrefix}.auth.${AWS::Region}.amazoncognito.com

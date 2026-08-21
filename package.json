@@ -8,6 +8,7 @@
     "encrypt": "node scripts/encrypt-family.mjs",
     "enable:all-anchors": "node scripts/enable-all-public-anchors.mjs",
     "generate:anchors": "node scripts/generate-public-anchors.mjs",
+    "apply:additions": "node scripts/apply-family-additions.mjs",
     "validate:family": "node scripts/validate-family-data.mjs",
     "validate": "node scripts/validate-public-build.mjs",
     "test": "node --test test/*.test.mjs api/test/*.test.mjs",
