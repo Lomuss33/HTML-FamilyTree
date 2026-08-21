@@ -94,7 +94,12 @@ export function createAdminSuggestionsHandler({
         logSafe(logger, "info", { requestId, routeKey, result: "request_rejected", category: error.category });
         return response(error.statusCode, { error: error.message });
       }
-      logSafe(logger, "error", { requestId, routeKey, result: "failed" });
+      logSafe(logger, "error", {
+        requestId,
+        routeKey,
+        result: "failed",
+        ...safeAwsError(error)
+      });
       return response(500, { error: "Admin request failed" });
     }
   };
@@ -248,23 +253,20 @@ function loadRuntimeRevision() {
   return runtimeRevision;
 }
 
-function getRuntimeStore() {
-  if (runtimeStore) return runtimeStore;
+export function createDynamoStore({ getClient = createDefaultDynamoClient, commands = {} } = {}) {
   let documentClient;
 
-  async function getClient() {
+  async function resolveClient() {
     if (!documentClient) {
-      const { DynamoDBClient } = await import("@aws-sdk/client-dynamodb");
-      const { DynamoDBDocumentClient } = await import("@aws-sdk/lib-dynamodb");
-      documentClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+      documentClient = await getClient();
     }
     return documentClient;
   }
 
-  runtimeStore = {
+  return {
     async query({ status, type, limit, exclusiveStartKey }) {
-      const { QueryCommand } = await import("@aws-sdk/lib-dynamodb");
-      const names = { "#status": "status", "#type": "type" };
+      const QueryCommand = commands.QueryCommand ?? (await import("@aws-sdk/lib-dynamodb")).QueryCommand;
+      const names = { "#status": "status" };
       const values = { ":status": status };
       const input = {
         TableName: process.env.SUGGESTIONS_TABLE_NAME,
@@ -277,16 +279,17 @@ function getRuntimeStore() {
         ExclusiveStartKey: exclusiveStartKey
       };
       if (type) {
-        input.FilterExpression = "#type = :type";
+        names["#type"] = "type";
         values[":type"] = type;
+        input.FilterExpression = "#type = :type";
       }
-      const result = await (await getClient()).send(new QueryCommand(input));
+      const result = await (await resolveClient()).send(new QueryCommand(input));
       return { items: result.Items ?? [], lastEvaluatedKey: result.LastEvaluatedKey };
     },
 
     async get(id) {
-      const { GetCommand } = await import("@aws-sdk/lib-dynamodb");
-      const result = await (await getClient()).send(new GetCommand({
+      const GetCommand = commands.GetCommand ?? (await import("@aws-sdk/lib-dynamodb")).GetCommand;
+      const result = await (await resolveClient()).send(new GetCommand({
         TableName: process.env.SUGGESTIONS_TABLE_NAME,
         Key: { id },
         ConsistentRead: true
@@ -295,10 +298,10 @@ function getRuntimeStore() {
     },
 
     async update({ id, expectedStatus, expectedUpdatedAt, status, updatedAt, review }) {
-      const { UpdateCommand } = await import("@aws-sdk/lib-dynamodb");
+      const UpdateCommand = commands.UpdateCommand ?? (await import("@aws-sdk/lib-dynamodb")).UpdateCommand;
       const hasExpectedUpdatedAt = typeof expectedUpdatedAt === "string" && expectedUpdatedAt;
       try {
-        const result = await (await getClient()).send(new UpdateCommand({
+        const result = await (await resolveClient()).send(new UpdateCommand({
           TableName: process.env.SUGGESTIONS_TABLE_NAME,
           Key: { id },
           UpdateExpression: "SET #status = :status, #updatedAt = :updatedAt, #review = :review",
@@ -326,7 +329,6 @@ function getRuntimeStore() {
       }
     }
   };
-  return runtimeStore;
 }
 
 function parseLimit(value) {
@@ -412,6 +414,33 @@ function safeRouteKey(value) {
   return typeof value === "string" && /^[A-Z]+ \/[A-Za-z0-9{}\/_-]{1,128}$/.test(value) ? value : "unknown";
 }
 
+function safeAwsError(error) {
+  const metadata = isPlainObject(error?.$metadata) ? error.$metadata : {};
+  const safe = {
+    errorName: safeLogString(error?.name, "UnknownError"),
+    errorMessage: safeLogMessage(error?.message)
+  };
+  if (Number.isInteger(metadata.httpStatusCode)) safe.httpStatusCode = metadata.httpStatusCode;
+  const awsRequestId = safeRequestId(metadata.requestId);
+  if (awsRequestId !== "unknown") safe.awsRequestId = awsRequestId;
+  return safe;
+}
+
+function safeLogString(value, fallback) {
+  if (typeof value !== "string" || !value) return fallback;
+  return value.replace(/[\u0000-\u001F\u007F]/g, " ").slice(0, 128);
+}
+
+function safeLogMessage(value) {
+  if (typeof value !== "string" || !value) return "Unknown AWS error";
+  return value
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[redacted-token]")
+    .replace(/\bbearer\s+[^\s]+/gi, "Bearer [redacted]")
+    .replace(/\b(?:password|access\s*code|submission\s*code|family\s*password)\s*[:=]\s*[^\s,;]+/gi, "[redacted-secret]")
+    .slice(0, 512);
+}
+
 function logSafe(logger, level, metadata) {
   const method = typeof logger?.[level] === "function" ? logger[level].bind(logger) : null;
   method?.("admin_suggestion_request", metadata);
@@ -432,6 +461,17 @@ function response(statusCode, body) {
     },
     body: JSON.stringify(body)
   };
+}
+
+async function createDefaultDynamoClient() {
+  const { DynamoDBClient } = await import("@aws-sdk/client-dynamodb");
+  const { DynamoDBDocumentClient } = await import("@aws-sdk/lib-dynamodb");
+  return DynamoDBDocumentClient.from(new DynamoDBClient({}));
+}
+
+function getRuntimeStore() {
+  if (!runtimeStore) runtimeStore = createDynamoStore();
+  return runtimeStore;
 }
 
 class AdminRequestError extends Error {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createAdminSuggestionsHandler } from "../src/admin-suggestions.mjs";
+import { createAdminSuggestionsHandler, createDynamoStore } from "../src/admin-suggestions.mjs";
 
 const CLIENT_ID = "public-spa-client";
 const SUGGESTION_ID = "11111111-1111-4111-8111-111111111111";
@@ -38,6 +38,38 @@ test("authenticated list returns safe summaries with pagination", async () => {
   assert.equal("payload" in body.items[0], false);
   assert.match(body.nextToken, /^[A-Za-z0-9_-]+$/);
   assert.equal(JSON.stringify(body).includes("submission-secret"), false);
+});
+
+test("authenticated list without a type filter builds a valid DynamoDB query", async () => {
+  const inputs = [];
+  const store = createDynamoStore({
+    commands: {
+      QueryCommand: class QueryCommand {
+        constructor(input) {
+          this.input = input;
+        }
+      }
+    },
+    getClient: async () => ({
+      async send(command) {
+        inputs.push(command.input);
+        return { Items: [], LastEvaluatedKey: undefined };
+      }
+    })
+  });
+  const handler = createAdminSuggestionsHandler({
+    expectedClientId: CLIENT_ID,
+    revision,
+    store,
+    logger: { info() {}, error() {} }
+  });
+
+  const response = await handler(event("GET /admin/suggestions"));
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(inputs[0].ExpressionAttributeNames, { "#status": "status" });
+  assert.deepEqual(inputs[0].ExpressionAttributeValues, { ":status": "pending" });
+  assert.equal("FilterExpression" in inputs[0], false);
 });
 
 test("authenticated detail returns explicit fields and redacts secrets", async () => {
@@ -132,11 +164,36 @@ test("safe operational logs never contain suggestion content or credentials", as
   }
 });
 
-function setup({ item = textSuggestion(), queryResult, logger } = {}) {
+test("generic AWS errors log only redacted metadata", async () => {
+  const entries = [];
+  const logger = {
+    info: (...values) => entries.push(values),
+    error: (...values) => entries.push(values)
+  };
+  const awsError = Object.assign(new Error("DynamoDB rejected Bearer eyJheader.payload.signature password=family-secret"), {
+    name: "ValidationException",
+    $metadata: { httpStatusCode: 400, requestId: "aws-request-id" }
+  });
+  const { handler } = setup({ logger, queryError: awsError });
+
+  const response = await handler(event("GET /admin/suggestions"));
+
+  assert.equal(response.statusCode, 500);
+  const serialized = JSON.stringify(entries);
+  assert.equal(serialized.includes("ValidationException"), true);
+  assert.equal(serialized.includes("aws-request-id"), true);
+  assert.equal(serialized.includes("400"), true);
+  assert.equal(serialized.includes("eyJheader.payload.signature"), false);
+  assert.equal(serialized.includes("family-secret"), false);
+  assert.equal(serialized.includes("DynamoDB rejected"), true);
+});
+
+function setup({ item = textSuggestion(), queryResult, queryError, logger } = {}) {
   const items = new Map([[item.id, structuredClone(item)]]);
   const store = {
     items,
     async query() {
+      if (queryError) throw queryError;
       return queryResult ?? { items: [...items.values()], lastEvaluatedKey: null };
     },
     async get(id) {
