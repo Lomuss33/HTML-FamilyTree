@@ -7,5 +7,5 @@
  * here.
  */
 window.FAMILY_TREE_CONFIG = Object.freeze({
-  suggestionsApiUrl: "https://zzxey0gbd8.execute-api.eu-central-1.amazonaws.com/suggestions"
+  suggestionsApiUrl: "https://ut0iw0dyyf.execute-api.eu-north-1.amazonaws.com/suggestions"
 });
