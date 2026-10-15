@@ -1,0 +1,10 @@
+{
+  "suggestionsApiUrl": "https://ut0iw0dyyf.execute-api.eu-north-1.amazonaws.com/suggestions",
+  "adminApiUrl": "https://ut0iw0dyyf.execute-api.eu-north-1.amazonaws.com/admin/suggestions",
+  "adminAuth": {
+    "clientId": "44r1qdl0mj62cimr4ecjpsupgg",
+    "domain": "https://familytree-admin-047600599889-v3.auth.eu-north-1.amazoncognito.com",
+    "redirectUri": "https://lomuss33.github.io/HTML-FamilyTree/",
+    "logoutUri": "https://lomuss33.github.io/HTML-FamilyTree/"
+  }
+}

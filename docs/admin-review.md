@@ -54,6 +54,11 @@ Accepting a graph is rejected with HTTP 409 unless both the stored
 `anchorCatalogVersion` and `sourceRevision` equal that deployed artifact.
 Text acceptance does not require a graph revision.
 
+The browser refreshes public revision metadata before acceptance and patch
+download. Unsaved local changes block acceptance. Download patch again retries
+the deterministic export without sending another status update. Lock clears
+suggestion details and invalidates pending UI requests.
+
 The browser independently compares the suggestion with the current public
 catalog metadata and produces a deterministic patch with this shape:
 
@@ -98,14 +103,16 @@ The script:
 5. validates cycles, parent counts, ids, and all canonical invariants;
 6. generates candidate encrypted/catalog/allowlist/revision artifacts in a
    temporary directory;
-7. backs up `data/family.private.json` under ignored `data/backups/`;
-8. replaces the prepared outputs and runs public-build validation.
+7. writes verified recovery copies under ignored `private/transactions/`;
+8. replaces and verifies all five artifacts, or restores the previous set.
 
 The script does not commit, push, upload, or call AWS.
 
 ## Creating the first administrator
 
-After deployment, create a Cognito user with the AWS CLI:
+After confirming the project's assigned Region in AWS Settings, create an
+application administrator in the deployed Cognito user pool. This is separate
+from AWS project team-member access. Substitute the confirmed Region:
 
 ```bash
 aws cognito-idp admin-create-user \
@@ -113,7 +120,7 @@ aws cognito-idp admin-create-user \
   --username YOUR_EMAIL \
   --user-attributes Name=email,Value=YOUR_EMAIL Name=email_verified,Value=true \
   --desired-delivery-mediums EMAIL \
-  --region eu-north-1 \
+  --region YOUR_CONFIRMED_PROJECT_REGION \
   --profile familytree-prod
 ```
 

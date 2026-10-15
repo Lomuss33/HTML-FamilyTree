@@ -2,7 +2,7 @@
 
 ## Source of truth
 
-`data/family.private.json` is the only readable canonical source of truth. It is
+`private/family.json` is the only readable canonical source of truth. It is
 ignored by Git. `data/family.enc.json` is a generated encrypted representation
 for the protected GitHub Pages viewer.
 

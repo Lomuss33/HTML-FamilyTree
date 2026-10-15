@@ -14,6 +14,8 @@ export function createAdminAuthClient({
   if (!sessionStore || typeof sessionStore.getItem !== "function") throw new Error("Session storage is unavailable.");
   if (typeof fetchImpl !== "function") throw new Error("Fetch is unavailable.");
   if (!cryptoApi?.subtle || typeof cryptoApi.getRandomValues !== "function") throw new Error("Web Crypto is unavailable.");
+  let authGeneration = 0;
+  let sessionCleared = false;
 
   async function beginLogin() {
     const verifier = randomBase64Url(64, cryptoApi);
@@ -40,6 +42,7 @@ export function createAdminAuthClient({
   }
 
   async function completeRedirect() {
+    const generation = authGeneration;
     const url = new URL(locationObject.href);
     const error = url.searchParams.get("error");
     const code = url.searchParams.get("code");
@@ -47,11 +50,13 @@ export function createAdminAuthClient({
 
     try {
       if (error) throw new Error("Administrator sign-in was not completed.");
-      const flow = parseStoredJson(sessionStore.getItem(AUTH_FLOW_KEY));
+      const flow = readStoredJson(AUTH_FLOW_KEY);
       const returnedState = url.searchParams.get("state");
       if (!flow || !constantTimeEqual(flow.state, returnedState)) throw new Error("Administrator sign-in state is invalid or expired.");
 
       const response = await fetchImpl(new URL("/oauth2/token", normalizedDomain(config.domain)), {
+        signal: AbortSignal.timeout(15000),
+        credentials: "omit",
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -64,6 +69,7 @@ export function createAdminAuthClient({
       });
       if (!response.ok) throw new Error("Administrator sign-in could not be completed.");
       const result = await response.json();
+      if (generation !== authGeneration) return { handled: true, authenticated: false };
       const accessClaims = parseJwtClaims(result.access_token);
       const identityClaims = parseJwtClaims(result.id_token);
       validateReturnedClaims(accessClaims, identityClaims, flow.nonce, config.clientId, now());
@@ -76,34 +82,49 @@ export function createAdminAuthClient({
         email: typeof identityClaims.email === "string" ? identityClaims.email : ""
       };
       sessionStore.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+      sessionCleared = false;
       return { handled: true, authenticated: true, session: publicSession(session) };
     } finally {
-      sessionStore.removeItem(AUTH_FLOW_KEY);
+      removeStoredValue(AUTH_FLOW_KEY);
       stripOAuthParameters(locationObject, historyObject);
     }
   }
 
   function getSession() {
-    const session = parseStoredJson(sessionStore.getItem(AUTH_SESSION_KEY));
+    if (sessionCleared) return null;
+    const session = readStoredJson(AUTH_SESSION_KEY);
     if (!isSessionValid(session, now())) {
-      sessionStore.removeItem(AUTH_SESSION_KEY);
+      removeStoredValue(AUTH_SESSION_KEY);
       return null;
     }
     return publicSession(session);
   }
 
   function getAccessToken() {
-    const session = parseStoredJson(sessionStore.getItem(AUTH_SESSION_KEY));
+    if (sessionCleared) return null;
+    const session = readStoredJson(AUTH_SESSION_KEY);
     if (!isSessionValid(session, now())) {
-      sessionStore.removeItem(AUTH_SESSION_KEY);
+      removeStoredValue(AUTH_SESSION_KEY);
       return null;
     }
     return session.accessToken;
   }
 
   function clearLocalSession() {
-    sessionStore.removeItem(AUTH_SESSION_KEY);
-    sessionStore.removeItem(AUTH_FLOW_KEY);
+    ++authGeneration;
+    sessionCleared = true;
+    removeStoredValue(AUTH_SESSION_KEY);
+    removeStoredValue(AUTH_FLOW_KEY);
+  }
+
+  function readStoredJson(key) {
+    try { return parseStoredJson(sessionStore.getItem(key)); }
+    catch { return null; }
+  }
+
+  function removeStoredValue(key) {
+    try { sessionStore.removeItem(key); }
+    catch { /* Unavailable optional auth storage must not interrupt family locking. */ }
   }
 
   function beginLogout() {

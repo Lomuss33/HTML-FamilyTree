@@ -53,9 +53,10 @@ bulk migration for a maintainer who has deliberately decided to publish every
 canonical member as an anchor. It derives `publicLabel` from the canonical
 display-name fields and, because the current UI already displays `birthday`,
 copies a non-empty birthday into `publicLifespan`. It leaves branch labels empty
-unless an already reviewed privacy value exists. The migration touches only the
-ignored private source, validates before and after, and must be reviewed before
-generated artifacts are committed.
+unless an already reviewed privacy value exists. The command uses the shared five-artifact preparation transaction. Inspect
+its private publication preview first; an explicit --approve-publication is
+required for changes. It validates before and after and never publishes
+implicitly.
 
 ## Public catalog
 
@@ -131,7 +132,7 @@ safe patch export.
 
 ## Opting a person in
 
-1. Open local `data/family.private.json`.
+1. Open local `private/family.json`.
 2. Add a `privacy` object to the intended person.
 3. Set `publicAnchor` to `true`.
 4. Write a deliberately reviewed `publicLabel`.
@@ -153,8 +154,25 @@ cannot guarantee erasure of previously public values.
 
 ## CI without private production data
 
-CI never needs `data/family.private.json`. It validates fixtures, the tracked
+CI never needs `private/family.json`. It validates fixtures, the tracked
 fictional template, generated artifact schemas, catalog/allowlist agreement,
 and public runtime configuration. When the real private file exists locally,
 the same public-build command additionally verifies artifact freshness and
 scans tracked files for private-name leakage.
+
+## Personal-edition sessions and release checks
+
+Readable family nodes stay in memory; they are not written to browser storage.
+Refreshing or locking clears them. Administrator OAuth tokens are separate,
+short-lived credentials and remain in session storage until expiry or Lock.
+
+The local server publishes only the approved build manifest. Recovery plaintext
+stays under ignored private storage and is never served. Production publication
+uses only `dist/` and requires a digest receipt from a local decryption check.
+CI can verify that digest, but cannot independently decrypt without the password.
+
+The shared-password model trusts everyone who receives the password. It cannot
+revoke a copy already downloaded, prevent screenshots, or make deliberately public
+labels private again. Use a long unique passphrase and keep a tested encrypted
+backup outside this computer. Password rotation protects future publications;
+previous ciphertext remains decryptable with its old password.

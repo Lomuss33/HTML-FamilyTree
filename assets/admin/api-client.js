@@ -12,6 +12,8 @@ export function createAdminApiClient({
     if (!accessToken) throw new AdminApiError(401, "Administrator sign-in is required.");
     const response = await fetchImpl(url, {
       ...options,
+      signal: AbortSignal.timeout(15000),
+      credentials: "omit",
       cache: "no-store",
       headers: {
         Accept: "application/json",

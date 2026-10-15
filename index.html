@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'self'">
   <title>Family Archive</title>
   <meta name="description" content="A private family tree unlocked with a shared password.">
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
@@ -50,6 +51,7 @@
           <button class="secondary-button is-hidden" id="edit-button" type="button">Edit</button>
           <button class="secondary-button is-hidden" id="discard-button" type="button">Discard</button>
           <button class="primary-button is-hidden" id="save-button" type="button">Save</button>
+          <button class="secondary-button is-hidden" id="export-draft-button" type="button">Download draft</button>
           <button class="secondary-button is-hidden" id="suggest-button" type="button">Suggest an update</button>
           <button class="secondary-button is-hidden admin-review-button" id="admin-review-button" type="button">
             Review <span class="admin-count-badge" id="admin-pending-count" hidden></span>
@@ -415,6 +417,7 @@
                   <button class="secondary-button" id="admin-mark-pending" type="button">Mark pending</button>
                   <button class="danger-button" id="admin-reject" type="button">Reject</button>
                   <button class="primary-button" id="admin-accept" type="button">Accept</button>
+                  <button class="secondary-button" id="admin-download-patch" type="button" hidden>Download patch again</button>
                 </div>
               </section>
             </div>

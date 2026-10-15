@@ -19,6 +19,23 @@
   --control-height: 44px;
 }
 
+.f3 .personal-tree-card {
+  width: 220px;
+  height: 108px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  overflow: hidden;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.personal-tree-card strong { font-size: 15px; line-height: 1.2; }
+.personal-tree-card span { font-size: 12px; }
+.personal-tree-avatar { width: 34px; height: 34px; object-fit: cover; border-radius: 50%; }
+
 * {
   box-sizing: border-box;
 }
@@ -334,6 +351,7 @@ h2 {
 
 .tree-toolbar {
   display: flex;
+  min-width: 0;
   order: 2;
   gap: var(--space-2);
   align-items: center;
@@ -477,8 +495,9 @@ h2 {
   backdrop-filter: blur(5px);
 }
 
-.is-hidden {
-  display: none;
+.is-hidden,
+[hidden] {
+  display: none !important;
 }
 
 [hidden] {
@@ -1692,7 +1711,45 @@ h2 {
   }
 
   .toolbar-meta {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .toolbar-meta .primary-button,
+  .toolbar-meta .secondary-button,
+  .chart-root .f3-form button {
+    min-height: 44px;
+  }
+
+  .chart-root {
+    position: relative;
+  }
+
+  .chart-root .f3-form-cont.opened {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 100%;
+    max-width: 100%;
+    background: #203128;
+    overscroll-behavior: contain;
+  }
+
+  .chart-root .f3-form {
+    padding: 16px;
+  }
+
+  .chart-root .f3-form input[type="text"],
+  .chart-root .f3-form textarea,
+  .chart-root .f3-form select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .chart-root .f3-close-btn {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
   }
 
   .suggestion-actions {

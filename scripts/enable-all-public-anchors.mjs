@@ -1,13 +1,7 @@
-import { randomUUID } from "node:crypto";
-import { execFile } from "node:child_process";
-import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 import { validateFamilyData } from "./validate-family-data.mjs";
-
-const PRIVATE_SOURCE_PATH = path.resolve("data/family.private.json");
-const execFileAsync = promisify(execFile);
+import { safeErrorMessage } from "./lib/project-paths.mjs";
 
 export function enableAllPublicAnchors(family) {
   validateFamilyData(family);
@@ -31,56 +25,6 @@ export function enableAllPublicAnchors(family) {
   validateFamilyData(migrated);
   verifyMigrationPreservedCanonicalGraph(family, migrated);
   return migrated;
-}
-
-export async function migrateAllPublicAnchorsFile(filePath = PRIVATE_SOURCE_PATH) {
-  const resolvedPath = path.resolve(filePath);
-  if (resolvedPath === PRIVATE_SOURCE_PATH) await assertPrivateSourceIsIgnored();
-  const originalText = await readFile(resolvedPath, "utf8");
-  const family = JSON.parse(originalText);
-  const migrated = enableAllPublicAnchors(family);
-  const output = `${JSON.stringify(migrated, null, 2)}\n`;
-  const temporaryPath = path.join(
-    path.dirname(resolvedPath),
-    `.${path.basename(resolvedPath)}.${randomUUID()}.tmp`
-  );
-
-  try {
-    await writeFile(temporaryPath, output, { encoding: "utf8", flag: "wx" });
-    const verified = JSON.parse(await readFile(temporaryPath, "utf8"));
-    validateFamilyData(verified);
-    verifyMigrationPreservedCanonicalGraph(family, verified);
-    await rename(temporaryPath, resolvedPath);
-  } finally {
-    await rm(temporaryPath, { force: true });
-  }
-
-  return {
-    personCount: migrated.length,
-    optedInCount: migrated.filter((person) => person.privacy?.publicAnchor === true).length,
-    filePath: resolvedPath
-  };
-}
-
-async function assertPrivateSourceIsIgnored() {
-  const { stdout: tracked } = await execFileAsync(
-    "git",
-    ["ls-files", "--", "data/family.private.json"],
-    { encoding: "utf8" }
-  );
-  if (tracked.trim()) {
-    throw new Error("Refusing migration: data/family.private.json is tracked by Git.");
-  }
-
-  try {
-    await execFileAsync(
-      "git",
-      ["check-ignore", "--quiet", "data/family.private.json"],
-      { encoding: "utf8" }
-    );
-  } catch {
-    throw new Error("Refusing migration: data/family.private.json is not covered by .gitignore.");
-  }
 }
 
 function derivePublicLabel(person) {
@@ -133,15 +77,14 @@ function isPlainObject(value) {
 
 async function runCli() {
   try {
-    const result = await migrateAllPublicAnchorsFile(PRIVATE_SOURCE_PATH);
-    console.log(`Opted in ${result.optedInCount} of ${result.personCount} canonical people.`);
-    console.log(`Updated ignored private source: ${result.filePath}`);
+    const { runPreparation } = await import("./prepare-family.mjs");
+    await runPreparation(process.argv.slice(2), { transform: enableAllPublicAnchors });
   } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
+    console.error(error.code ?? "ANCHOR_PREPARATION_FAILED", safeErrorMessage(error));
     process.exitCode = 1;
   }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  await runCli();
+  void runCli();
 }

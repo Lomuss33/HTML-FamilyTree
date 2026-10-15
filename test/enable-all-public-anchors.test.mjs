@@ -1,12 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
+import { createProject, PASSWORD, hashes } from "./helpers/project.mjs";
+import { createFamilyWorkflow } from "../scripts/lib/family-workflow.mjs";
 import test from "node:test";
-import {
-  enableAllPublicAnchors,
-  migrateAllPublicAnchorsFile
-} from "../scripts/enable-all-public-anchors.mjs";
+import { enableAllPublicAnchors } from "../scripts/enable-all-public-anchors.mjs";
 
 test("opts every canonical person in using only existing display fields", () => {
   const family = validFamily();
@@ -33,24 +30,21 @@ test("refuses a person without a usable canonical display name", () => {
   assert.throws(() => enableAllPublicAnchors(family), /first-name and last-name|first name and last name/i);
 });
 
-test("atomically writes a validated migrated private file", async () => {
-  const directory = await mkdtemp(path.join(tmpdir(), "family-anchor-migration-"));
-  const filePath = path.join(directory, "family.private.json");
-  await writeFile(filePath, `${JSON.stringify(validFamily(), null, 2)}\n`, "utf8");
-  const result = await migrateAllPublicAnchorsFile(filePath);
-  const saved = JSON.parse(await readFile(filePath, "utf8"));
-  assert.equal(result.personCount, 2);
-  assert.equal(result.optedInCount, 2);
-  assert.equal(saved.every((person) => person.privacy.publicAnchor), true);
-});
-
-test("leaves an invalid private source unchanged", async () => {
-  const directory = await mkdtemp(path.join(tmpdir(), "family-anchor-invalid-"));
-  const filePath = path.join(directory, "family.private.json");
-  const invalidText = `${JSON.stringify([{ id: "broken" }], null, 2)}\n`;
-  await writeFile(filePath, invalidText, "utf8");
-  await assert.rejects(migrateAllPublicAnchorsFile(filePath), /Canonical family data is invalid/);
-  assert.equal(await readFile(filePath, "utf8"), invalidText);
+test("bulk opt-in requires review before the shared transaction replaces any live output", async t => {
+  const { paths, nodes } = await createProject(t, { nodes: validFamily() });
+  const workflow = createFamilyWorkflow(paths);
+  const snapshot = await workflow.snapshot();
+  const before = await hashes(paths);
+  const request = { nodes: enableAllPublicAnchors(nodes), password: PASSWORD, operation: "prepare",
+    operationId: "bulk-anchor-test", expectedRevision: snapshot.privateRevision, snapshotId: snapshot.snapshotId };
+  const review = await workflow.save(request);
+  assert.equal(review.code, "PUBLICATION_REVIEW");
+  assert.deepEqual(await hashes(paths), before);
+  const result = await workflow.save({ ...request, publicationApprovalToken: review.approvalToken });
+  assert.equal(result.ok, true);
+  const saved = JSON.parse(await readFile(paths.canonical, "utf8"));
+  assert.equal(saved.every(person => person.privacy.publicAnchor), true);
+  assert.equal(JSON.parse(await readFile(paths.catalog, "utf8")).anchors.length, 2);
 });
 
 function validFamily() {

@@ -1,17 +1,38 @@
 {
   "name": "drvo-obiteljsko",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "node scripts/local-server.mjs",
     "local": "node scripts/local-server.mjs",
+    "migrate": "node scripts/migrate-family.mjs",
+    "prepare": "node scripts/prepare-family.mjs",
     "encrypt": "node scripts/encrypt-family.mjs",
     "enable:all-anchors": "node scripts/enable-all-public-anchors.mjs",
     "generate:anchors": "node scripts/generate-public-anchors.mjs",
     "apply:additions": "node scripts/apply-family-additions.mjs",
     "validate:family": "node scripts/validate-family-data.mjs",
     "validate": "node scripts/validate-public-build.mjs",
-    "test": "node --test test/*.test.mjs api/test/*.test.mjs",
-    "build": "npm run validate:family && npm run encrypt && npm run generate:anchors && npm run validate"
+    "validate:dist": "node scripts/validate-public-build.mjs --dist dist",
+    "check:publish": "node scripts/validate-public-build.mjs --dist dist --require-password",
+    "backup": "node scripts/backup-family.mjs",
+    "restore": "node scripts/restore-family.mjs",
+    "recover": "node scripts/recover-family.mjs",
+    "check:syntax": "node scripts/check-syntax.mjs",
+    "test": "node scripts/run-tests.mjs",
+    "build": "node scripts/build-site.mjs",
+    "build:production": "node scripts/build-site.mjs --environment production",
+    "verify": "npm run check:syntax && npm test && npm run validate && npm run build && npm run validate:dist",
+    "preview:fictional": "node scripts/preview-fictional.mjs",
+    "release:prepare": "node scripts/prepare-release.mjs",
+    "release:verify": "node scripts/verify-release.mjs",
+    "test:browser": "playwright test --config scripts/browser.config.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
   }
 }

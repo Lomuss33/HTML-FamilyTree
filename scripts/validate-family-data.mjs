@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { projectPaths, canonicalPath, safeErrorMessage } from "./lib/project-paths.mjs";
 
 const RELATION_KEYS = Object.freeze(["parents", "children", "spouses"]);
 const SUPPORTED_GENDERS = new Set(["M", "F"]);
@@ -354,9 +355,9 @@ function isPlainObject(value) {
 
 async function runCli() {
   const options = parseArgs(process.argv.slice(2));
-  const inputPath = path.resolve(options.input ?? "data/family.private.json");
-
   try {
+    const paths = projectPaths(options.root);
+    const inputPath = options.input ? path.resolve(options.input) : await canonicalPath(paths, { required: false }) ?? paths.template;
     const family = JSON.parse(await readFile(inputPath, "utf8"));
     const result = validateFamilyData(family, {
       mainPersonId: options["main-person-id"]
@@ -364,10 +365,10 @@ async function runCli() {
     const revision = computeCanonicalSourceRevision(family, {
       mainPersonId: options["main-person-id"]
     });
-    console.log(`Validated ${result.personCount} canonical people. Main person: ${result.mainPersonId}.`);
+    console.log("Validated " + result.personCount + " people (" + (options.input ? "explicit input" : inputPath === paths.template ? "fictional template; private source absent" : "private source") + ").");
     console.log(`Source revision: ${revision}`);
   } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
+    console.error(safeErrorMessage(error, "Family validation stopped. Check the JSON and relationships locally."));
     process.exitCode = 1;
   }
 }

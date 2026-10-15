@@ -3,40 +3,37 @@ name: Verify
 on:
   pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci --ignore-scripts
+      - run: npm ci --prefix api --ignore-scripts
+      - run: npm run verify
+
+  browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node --check assets/app.js
-      - run: node --check assets/suggestions/draft-model.js
-      - run: node --check assets/suggestions/graph-adapter.js
-      - run: node --check assets/suggestions/public-anchor-catalog.js
-      - run: node --check assets/suggestions/submission-api.js
-      - run: node --check assets/suggestions/visual-editor.js
-      - run: node --check assets/admin/auth-client.js
-      - run: node --check assets/admin/api-client.js
-      - run: node --check assets/admin/patch-model.js
-      - run: node --check assets/admin/review-graph-adapter.js
-      - run: node --check assets/admin/review-workspace.js
-      - run: node --check api/src/admin-suggestions.mjs
-      - run: node --check api/src/submit-suggestion.mjs
-      - run: node --check api/src/validate-graph-suggestion.mjs
-      - run: node --check scripts/enable-all-public-anchors.mjs
-      - run: node --check scripts/encrypt-family.mjs
-      - run: node --check scripts/generate-public-anchors.mjs
-      - run: node --check scripts/local-server.mjs
-      - run: node --check scripts/validate-family-data.mjs
-      - run: node --check scripts/validate-public-build.mjs
-      - run: node --check scripts/apply-family-additions.mjs
-      - run: npm test
-      - run: npm run validate
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

@@ -32,7 +32,7 @@ isolated behind a Cognito user pool and API Gateway JWT authorizer. See
 2. Create a separate submission access code of at least 12 characters. It must
    not be the family-tree decryption password.
 
-3. Install the [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html), authenticate the AWS CLI, and choose a Region.
+3. Install the [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html), authenticate the AWS CLI, and confirm the project's assigned Region in **AWS Settings → View all projects → Overview → Additional Info → Region**. Check plan/spend status in **AWS Settings → Billing**. Create Regional resources only in that selected Region.
 
 ## Deploy
 
@@ -53,23 +53,29 @@ Record the `SuggestionsApiUrl` CloudFormation output.
 
 ## Connect the website
 
-Replace the empty value in `assets/site-config.js` with the full output URL:
+Put the public outputs in `config/production.json`. For example (replace the
+illustrative URLs with the actual outputs from the project's selected Region):
 
-```js
-window.FAMILY_TREE_CONFIG = Object.freeze({
-  suggestionsApiUrl: "https://example.execute-api.eu-north-1.amazonaws.com/suggestions",
-  adminApiUrl: "https://example.execute-api.eu-north-1.amazonaws.com/admin/suggestions",
-  adminAuth: Object.freeze({
-    clientId: "public-cognito-app-client-id",
-    domain: "https://example.auth.eu-north-1.amazoncognito.com",
-    redirectUri: "https://example.github.io/HTML-FamilyTree/",
-    logoutUri: "https://example.github.io/HTML-FamilyTree/"
-  })
-});
+```json
+{
+  "suggestionsApiUrl": "https://api.example.test/suggestions",
+  "adminApiUrl": "https://api.example.test/admin/suggestions",
+  "adminAuth": {
+    "clientId": "public-cognito-app-client-id",
+    "domain": "https://sign-in.example.test",
+    "redirectUri": "https://example.github.io/family/",
+    "logoutUri": "https://example.github.io/family/"
+  }
+}
 ```
 
-Commit and publish that file with the GitHub Pages site. The API URL is public;
-the submission access code is never put in a repository file.
+Run the locally verified release workflow in [the maintainer guide](../MAINTAINER.md).
+The builder generates `assets/site-config.js` in `dist/`. Source defaults disable
+both services. Optional ignored `config/local.json` enables local development
+explicitly; it never inherits production endpoints.
+
+The API URL and OAuth client identifier are public. The submission access code
+is never put in a repository file.
 
 When `suggestionsApiUrl` is a valid HTTPS URL, the same suggestion form is
 available from both the locked screen and the unlocked tree toolbar. The locked

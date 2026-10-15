@@ -3,3 +3,12 @@ data/backups/
 .aws-sam/
 samconfig.toml
 node_modules/
+private/
+family-private-draft*.json
+dist/
+dist.build-*/
+dist.previous-*/
+config/local.json
+config/production.local.json
+test-results/
+playwright-report/

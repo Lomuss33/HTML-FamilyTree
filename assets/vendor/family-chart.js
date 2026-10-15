@@ -1959,7 +1959,7 @@
         return (` 
     <form id="familyForm" class="f3-form">
       ${closeBtn()}
-      <h3 class="f3-form-title">${form_creator.title}</h3>
+      <h3 class="f3-form-title">${escapeChartHtml(form_creator.title)}</h3>
       ${genderRadio(form_creator)}
 
       ${fields(form_creator)}
@@ -2040,15 +2040,21 @@
       ${form_creator.gender_field.options.map(option => (`
         <label>
           <input type="radio" name="${form_creator.gender_field.id}" 
-            value="${option.value}" 
+            value="${escapeChartHtml(option.value)}"
             ${option.value === form_creator.gender_field.initial_value ? 'checked' : ''}
             ${form_creator.gender_field.disabled ? 'disabled' : ''}
           >
-          ${option.label}
+          ${escapeChartHtml(option.label)}
         </label>
       `)).join('')}
     </div>
   `);
+    }
+    // Local security patch: names and form values are text, including in editor/search views.
+    function escapeChartHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, character => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[character]);
     }
     function fields(form_creator) {
         if (!form_creator.editable)
@@ -2058,40 +2064,40 @@
             if (field.type === 'text') {
                 fields_html += `
       <div class="f3-form-field">
-        <label>${field.label}</label>
+        <label>${escapeChartHtml(field.label)}</label>
         <input type="${field.type}" 
-          name="${field.id}" 
-          value="${field.initial_value || ''}"
-          placeholder="${field.label}">
+          name="${escapeChartHtml(field.id)}"
+          value="${escapeChartHtml(field.initial_value || '')}"
+          placeholder="${escapeChartHtml(field.label)}">
       </div>`;
             }
             else if (field.type === 'textarea') {
                 fields_html += `
       <div class="f3-form-field">
-        <label>${field.label}</label>
-        <textarea name="${field.id}" 
-          placeholder="${field.label}">${field.initial_value || ''}</textarea>
+        <label>${escapeChartHtml(field.label)}</label>
+        <textarea name="${escapeChartHtml(field.id)}"
+          placeholder="${escapeChartHtml(field.label)}">${escapeChartHtml(field.initial_value || '')}</textarea>
       </div>`;
             }
             else if (field.type === 'select') {
                 const select_field = field;
                 fields_html += `
       <div class="f3-form-field">
-        <label>${select_field.label}</label>
-        <select name="${select_field.id}" value="${select_field.initial_value || ''}">
-          <option value="">${select_field.placeholder || `Select ${select_field.label}`}</option>
-          ${select_field.options.map((option) => `<option ${option.value === select_field.initial_value ? 'selected' : ''} value="${option.value}">${option.label}</option>`).join('')}
+        <label>${escapeChartHtml(select_field.label)}</label>
+        <select name="${escapeChartHtml(select_field.id)}" value="${escapeChartHtml(select_field.initial_value || '')}">
+          <option value="">${escapeChartHtml(select_field.placeholder || ("Select " + select_field.label))}</option>
+          ${select_field.options.map((option) => `<option ${option.value === select_field.initial_value ? 'selected' : ''} value="${escapeChartHtml(option.value)}">${escapeChartHtml(option.label)}</option>`).join('')}
         </select>
       </div>`;
             }
             else if (field.type === 'rel_reference') {
                 fields_html += `
       <div class="f3-form-field">
-        <label>${field.label} - <i>${field.rel_label}</i></label>
+        <label>${escapeChartHtml(field.label)} - <i>${escapeChartHtml(field.rel_label)}</i></label>
         <input type="text" 
-          name="${field.id}" 
-          value="${field.initial_value || ''}"
-          placeholder="${field.label}">
+          name="${escapeChartHtml(field.id)}"
+          value="${escapeChartHtml(field.initial_value || '')}"
+          placeholder="${escapeChartHtml(field.label)}">
       </div>`;
             }
         });
@@ -2105,8 +2111,8 @@
                         return;
                     fields_html += `
         <div class="f3-info-field">
-          <span class="f3-info-field-label">${field.label} - <i>${field.rel_label}</i></span>
-          <span class="f3-info-field-value">${field.initial_value || ''}</span>
+          <span class="f3-info-field-label">${escapeChartHtml(field.label)} - <i>${escapeChartHtml(field.rel_label)}</i></span>
+          <span class="f3-info-field-value">${escapeChartHtml(field.initial_value || '')}</span>
         </div>`;
                 }
                 else if (field.type === 'select') {
@@ -2115,15 +2121,15 @@
                         return;
                     fields_html += `
         <div class="f3-info-field">
-          <span class="f3-info-field-label">${select_field.label}</span>
+          <span class="f3-info-field-label">${escapeChartHtml(select_field.label)}</span>
           <span class="f3-info-field-value">${((_a = select_field.options.find(option => option.value === select_field.initial_value)) === null || _a === void 0 ? void 0 : _a.label) || ''}</span>
         </div>`;
                 }
                 else {
                     fields_html += `
         <div class="f3-info-field">
-          <span class="f3-info-field-label">${field.label}</span>
-          <span class="f3-info-field-value">${field.initial_value || ''}</span>
+          <span class="f3-info-field-label">${escapeChartHtml(field.label)}</span>
+          <span class="f3-info-field-value">${escapeChartHtml(field.initial_value || '')}</span>
         </div>`;
                 }
             });
@@ -2141,7 +2147,7 @@
         <label>${title}</label>
         <select>
           <option value="">${select_placeholder}</option>
-          ${options.map(option => `<option value="${option.value}">${option.label}</option>`).join('')}
+          ${options.map(option => `<option value="${escapeChartHtml(option.value)}">${escapeChartHtml(option.label)}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -2616,7 +2622,7 @@
                             : cardInnerDefault;
         return function (d) {
             this.innerHTML = (`
-    <div class="card ${getClassList(d).join(' ')}" data-id="${d.tid}" style="transform: translate(-50%, -50%); pointer-events: auto;">
+    <div class="card ${getClassList(d).join(' ')}" data-id="${escapeChartHtml(d.tid)}" style="transform: translate(-50%, -50%); pointer-events: auto;">
       ${props.mini_tree ? getMiniTree(d) : ''}
       ${(props.cardInnerHtmlCreator && !d.data._new_rel_data) ? props.cardInnerHtmlCreator(d) : cardInner(d)}
     </div>
@@ -3543,7 +3549,7 @@
                     const spouse = store.getDatum(spouse_id);
                     if (!spouse)
                         throw new Error('Spouse not found');
-                    const marriage_date_id = `${field.id}__ref__${spouse_id}`;
+                    const marriage_date_id = `${escapeChartHtml(field.id)}__ref__${spouse_id}`;
                     const rel_reference_field = {
                         id: marriage_date_id,
                         type: 'rel_reference',
@@ -4589,11 +4595,11 @@
                     if (index !== -1)
                         d.label_html = itemLabel();
                     else
-                        d.label_html = d.label;
+                        d.label_html = escapeChartHtml(d.label);
                     function itemLabel() {
-                        return d.label.substring(0, index)
-                            + '<strong>' + d.label.substring(index, index + search_input_value.length)
-                            + '</strong>' + d.label.substring(index + search_input_value.length);
+                        return escapeChartHtml(d.label.substring(0, index))
+                            + '<strong>' + escapeChartHtml(d.label.substring(index, index + search_input_value.length))
+                            + '</strong>' + escapeChartHtml(d.label.substring(index + search_input_value.length));
                     }
                 }
                 function sortByLabel(a, b) {

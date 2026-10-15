@@ -99,6 +99,7 @@ export async function submitSuggestionRequest(request, {
   }
   try {
     response = await fetchImpl(apiUrl, {
+      signal: AbortSignal.timeout(15000),
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "omit",

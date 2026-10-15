@@ -1,17 +1,8 @@
-import { execFile } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import {
-  copyFile,
-  mkdir,
-  mkdtemp,
-  readFile,
-  rename,
-  rm,
-  writeFile
-} from "node:fs/promises";
-import os from "node:os";
+import { createFamilyWorkflow } from "./lib/family-workflow.mjs";
+import { digest } from "./lib/family-crypto.mjs";
+import { projectPaths, parseArgs, FamilyWorkflowError, safeErrorMessage } from "./lib/project-paths.mjs";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 import {
   compareStrings,
@@ -19,7 +10,6 @@ import {
   validateFamilyData
 } from "./validate-family-data.mjs";
 
-const execFileAsync = promisify(execFile);
 const REVISION_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const NEW_ID_PATTERN = /^sg_[0-9a-f]{32}_[1-9][0-9]{0,3}$/;
 const TOP_LEVEL_KEYS = new Set([
@@ -64,11 +54,6 @@ export function applyFamilyAdditions(family, patch, { catalogVersion } = {}) {
     } else {
       from.rels.spouses.push(to.id);
       to.rels.spouses.push(from.id);
-    }
-  }
-  for (const person of result) {
-    for (const relation of ["parents", "children", "spouses"]) {
-      person.rels[relation] = [...new Set(person.rels[relation])].sort(compareStrings);
     }
   }
   validateFamilyData(result);
@@ -151,71 +136,28 @@ function validatePatchRelationships(patch, newIds) {
 
 async function runCli() {
   const options = parseArgs(process.argv.slice(2));
-  const patchPath = options.patch ? path.resolve(options.patch) : null;
-  if (!patchPath) throw new Error("Use --patch <downloaded-family-additions.json>.");
-  if (!process.env.FAMILY_TREE_PASSWORD && !options["dry-run"]) {
-    throw new Error("Set FAMILY_TREE_PASSWORD before applying so encrypted artifacts can be regenerated.");
-  }
-
-  const privatePath = path.resolve("data/family.private.json");
-  const catalogPath = path.resolve("data/family.anchors.public.json");
-  const encryptedPath = path.resolve("data/family.enc.json");
-  const allowlistPath = path.resolve("api/generated/public-anchor-allowlist.json");
-  const revisionPath = path.resolve("api/generated/canonical-revision.json");
-  const family = JSON.parse(await readFile(privatePath, "utf8"));
-  const patch = JSON.parse(await readFile(patchPath, "utf8"));
-  const catalog = JSON.parse(await readFile(catalogPath, "utf8"));
-  const result = applyFamilyAdditions(family, patch, { catalogVersion: catalog.catalogVersion });
-
-  if (options["dry-run"]) {
-    console.log(`Patch validation passed. ${patch.addPeople.length} people and ${patch.addRelationships.length} relationships would be added.`);
+  if (typeof options.patch !== "string") throw new FamilyWorkflowError("PATCH_REQUIRED", "Use --patch <reviewed-additions.json>.");
+  const paths = projectPaths(options.root);
+  const workflow = createFamilyWorkflow(paths);
+  const snapshot = await workflow.snapshot();
+  const patch = JSON.parse(await readFile(path.resolve(options.patch), "utf8"));
+  validatePatchShape(patch);
+  const inputDigest = digest(JSON.stringify(patch));
+  const operationId = "patch-" + patch.suggestionId.replaceAll("-", "");
+  const prior = await workflow.receipt(operationId);
+  if (prior?.state === "committed") {
+    if (prior.result.inputDigest !== inputDigest) throw new FamilyWorkflowError("OPERATION_CONFLICT", "A different patch already used this suggestion identifier.", 409);
+    console.log(JSON.stringify({ ...prior.result, alreadyApplied: true }, null, 2));
     return;
   }
-
-  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "family-tree-patch-"));
-  try {
-    const candidatePrivate = path.join(temporaryDirectory, "family.private.json");
-    const candidateEncrypted = path.join(temporaryDirectory, "family.enc.json");
-    const candidateCatalog = path.join(temporaryDirectory, "family.anchors.public.json");
-    const candidateAllowlist = path.join(temporaryDirectory, "public-anchor-allowlist.json");
-    const candidateRevision = path.join(temporaryDirectory, "canonical-revision.json");
-    await writeFile(candidatePrivate, `${JSON.stringify(result, null, 2)}\n`, "utf8");
-
-    await execFileAsync(process.execPath, [
-      "scripts/encrypt-family.mjs",
-      "--input", candidatePrivate,
-      "--output", candidateEncrypted
-    ], { cwd: path.resolve("."), env: process.env });
-    await execFileAsync(process.execPath, [
-      "scripts/generate-public-anchors.mjs",
-      "--input", candidatePrivate,
-      "--catalog-output", candidateCatalog,
-      "--allowlist-output", candidateAllowlist,
-      "--revision-output", candidateRevision
-    ], { cwd: path.resolve("."), env: process.env });
-
-    const backupDirectory = path.resolve("data/backups");
-    await mkdir(backupDirectory, { recursive: true });
-    const backupPath = path.join(backupDirectory, `family.private.${new Date().toISOString().replaceAll(":", "-")}.json`);
-    await copyFile(privatePath, backupPath);
-
-    await replaceFromPreparedFile(candidatePrivate, privatePath);
-    await replaceFromPreparedFile(candidateEncrypted, encryptedPath);
-    await replaceFromPreparedFile(candidateCatalog, catalogPath);
-    await replaceFromPreparedFile(candidateAllowlist, allowlistPath);
-    await replaceFromPreparedFile(candidateRevision, revisionPath);
-    await execFileAsync("npm", ["run", "validate"], { cwd: path.resolve("."), env: process.env });
-    console.log(`Applied ${patch.addPeople.length} people and ${patch.addRelationships.length} relationships.`);
-    console.log(`Private backup: ${backupPath}`);
-  } finally {
-    await rm(temporaryDirectory, { recursive: true, force: true });
-  }
-}
-
-async function replaceFromPreparedFile(source, target) {
-  const temporaryTarget = path.join(path.dirname(target), `.${path.basename(target)}.${randomUUID()}.tmp`);
-  await writeFile(temporaryTarget, await readFile(source));
-  await rename(temporaryTarget, target);
+  const catalog = JSON.parse(await readFile(paths.catalog, "utf8"));
+  const nodes = applyFamilyAdditions(snapshot.nodes, patch, { catalogVersion: catalog.catalogVersion });
+  if (options["dry-run"]) { console.log(JSON.stringify({ dryRun: true, addedPeople: patch.addPeople.length, addedRelationships: patch.addRelationships.length })); return; }
+  if (!process.env.FAMILY_TREE_PASSWORD) throw new FamilyWorkflowError("PASSWORD_REQUIRED", "Supply FAMILY_TREE_PASSWORD locally.");
+  const result = await workflow.save({ nodes, password: process.env.FAMILY_TREE_PASSWORD, operation: "patch",
+    operationId, inputDigest, expectedRevision: snapshot.privateRevision, snapshotId: snapshot.snapshotId });
+  if (!result.ok) throw new FamilyWorkflowError("PUBLICATION_REVIEW", "Patch publication requires explicit review.", 409);
+  console.log(JSON.stringify(result, null, 2));
 }
 
 function requireExactKeys(value, keys, label) {
@@ -229,27 +171,11 @@ function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function parseArgs(argv) {
-  const parsed = {};
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-    if (!argument.startsWith("--")) continue;
-    const key = argument.slice(2);
-    const value = argv[index + 1];
-    if (!value || value.startsWith("--")) parsed[key] = true;
-    else {
-      parsed[key] = value;
-      index += 1;
-    }
-  }
-  return parsed;
-}
-
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {
     await runCli();
   } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
+    console.error(safeErrorMessage(error, "Patch application stopped. Check the reviewed patch locally."));
     process.exitCode = 1;
   }
 }

@@ -89,6 +89,40 @@ test("local patch application rejects temporary IDs and duplicate relationships"
   assert.throws(() => applyFamilyAdditions(canonical, duplicatePatch, { catalogVersion: CATALOG_VERSION }), /duplicate relationship/);
 });
 
+test("an addition preserves existing relationship order and all unrelated person fields", () => {
+  const person = (id, gender, parents = [], children = []) => ({
+    id, data: { "first name": "Fictional", gender, "private note": "Keep this field" },
+    rels: { parents, children, spouses: [] }
+  });
+  const canonical = [person("child", "F", ["z-parent", "a-parent"]),
+    person("z-parent", "M", [], ["child"]), person("a-parent", "F", [], ["child"])];
+  const before = structuredClone(canonical);
+  const sourceRevision = computeCanonicalSourceRevision(canonical);
+  const suggestion = graphSuggestion("child", sourceRevision);
+  suggestion.payload.relationships[0].type = "spouseOf";
+  const patch = createFamilyAdditionsPatch(suggestion, { catalogVersion: CATALOG_VERSION, sourceRevision });
+  const result = applyFamilyAdditions(canonical, patch, { catalogVersion: CATALOG_VERSION });
+  assert.deepEqual(result[0].rels.parents, before[0].rels.parents);
+  assert.deepEqual(result.slice(1, 3), before.slice(1));
+  assert.deepEqual(result[0].data, before[0].data);
+  assert.deepEqual(canonical, before);
+});
+
+test("unavailable administrator storage cannot break family unlock or lock", async () => {
+  const client = createAdminAuthClient({ config: authConfig(), cryptoApi: webcrypto,
+    sessionStore: { getItem() { throw new Error("Fictional storage failure"); },
+      removeItem() { throw new Error("Fictional storage failure"); },
+      setItem() { throw new Error("Fictional storage failure"); } },
+    locationObject: { href: "https://example.test/app/" }, historyObject: { replaceState() {} },
+    fetchImpl: async () => { throw new Error("No network request expected"); }
+  });
+  assert.equal(client.getSession(), null);
+  assert.equal(client.getAccessToken(), null);
+  assert.doesNotThrow(() => client.clearLocalSession());
+  assert.deepEqual(await client.completeRedirect(), { handled: false, authenticated: false });
+  await assert.rejects(client.beginLogin(), /storage failure/);
+});
+
 test("admin OAuth uses authorization code with PKCE and stores no refresh credential", async () => {
   const store = memoryStorage();
   const locationObject = {

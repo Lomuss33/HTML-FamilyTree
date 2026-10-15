@@ -1,202 +1,106 @@
-# Encrypted Family Tree
+# Personal Family Archive
 
-Static family tree viewer for GitHub Pages with:
+A small personal family tree: one local administrator edits the canonical tree,
+trusted visitors unlock an encrypted read-only copy, and optional guest
+suggestions wait for review.
 
-- a public read-only site
-- encrypted family data
-- local editing on `localhost`
-- direct save back into the repo for GitHub Desktop workflows
+The public/mobile commercial product remains a separate future project. This
+edition has no billing, public accounts, or automatic cross-family merges.
 
-## What It Is
+## Continue with the repaired tree
 
-This project publishes a family tree as a lightweight static site.
-
-The public site contains only:
-
-- the HTML/CSS/JS shell
-- the encrypted data payload
-- the deliberately published minimal anchor catalog (ids and reviewed labels,
-  without family relationships or arbitrary canonical fields)
-
-The readable family data lives only in a local file that is ignored by git.
-
-## Core Idea
-
-- GitHub Pages stays read-only.
-- Editing happens only on your local machine.
-- The browser decrypts the tree after unlock.
-- When running locally, `Save` writes directly into the repo.
-- GitHub Desktop then sees the changed files, and you push normally.
-
-## Project Files
-
-- `index.html`: public page shell
-- `assets/`: local styles, app logic, and vendored chart assets
-- `data/family.enc.json`: encrypted payload that gets committed
-- `data/family.private.json`: local plaintext data source, gitignored
-- `data/family.template.json`: tracked starter template for creating your own version
-- `data/family.anchors.public.json`: generated, privacy-reviewed public anchor catalog
-- `api/generated/public-anchor-allowlist.json`: matching backend anchor-id allowlist
-- `api/generated/canonical-revision.json`: private-data-free revision fingerprint for review
-- `scripts/local-server.mjs`: local server with direct save API
-- `scripts/encrypt-family.mjs`: encrypts the private JSON into the public payload
-- `scripts/validate-family-data.mjs`: validates canonical ids and graph invariants
-- `scripts/generate-public-anchors.mjs`: generates both public anchor artifacts
-- `scripts/enable-all-public-anchors.mjs`: explicit local bulk opt-in migration
-- `scripts/validate-public-build.mjs`: checks tracked files for plaintext leaks
-- `scripts/apply-family-additions.mjs`: validates and locally applies reviewed additions-only patches
-- `assets/suggestions/`: local guest visual-draft model, public catalog loader,
-  Family Chart adapter, and visual workspace controller
-- `assets/admin/`: Cognito PKCE client, admin API client, review workspace,
-  review graph adapter, and deterministic patch generator
-
-## Make Your Own Version
-
-1. Clone this repo.
-2. Copy `data/family.template.json` to `data/family.private.json`.
-3. Replace the template people with your own family data.
-4. Choose your own shared password locally.
-5. Generate the encrypted payload:
-
-   ```powershell
-   $env:FAMILY_TREE_PASSWORD="choose-your-own-password"
-   npm run encrypt
-   npm run generate:anchors
-   npm run validate
-   ```
-
-6. Publish the repo with GitHub Pages.
-
-## Local Editing
-
-Start the local server:
+The chosen local source has been preserved in ignored `private/family.json`.
+Missing relationship arrays were repaired and the existing 15 public labels were
+reconciled exactly. The original encrypted payload is preserved until you enter
+the current family password locally.
 
 ```powershell
-npm run local
+npm ci
+npm run dev
 ```
 
-Then open:
+Open http://127.0.0.1:4173, unlock, and click **Save** to prepare the repaired
+encrypted edition. Edit cards locally and use the page-level Save once for the
+whole draft, including unfinished fields in the current card. Save updates the private source, encrypted payload, public catalog,
+backend allowlist, and backend revision together.
 
-```text
-http://127.0.0.1:4173
-```
+Unlocking keeps readable family data in memory. Refresh and Lock close that
+session. A failed save keeps the draft. A stale tab cannot overwrite a newer
+save; download the private draft before reloading if you need to keep its edits.
 
-Local workflow:
+## Files and boundaries
 
-1. Unlock the tree.
-2. Click `Edit`.
-3. Save each edited card inside the modal.
-4. Click the page-level `Save` once when the full session is ready.
-5. Run `npm run generate:anchors` after id, relationship, or public-anchor changes.
-6. Run `npm run validate` and inspect every generated public value.
-7. Commit and push with GitHub Desktop.
+| Location | Purpose |
+| --- | --- |
+| `private/family.json` | Canonical plaintext, ignored by Git and never served |
+| `private/backups/` | Local migration copies and encrypted backups |
+| `private/transactions/` | Verified recovery files and operation receipts; contains private plaintext |
+| `data/family.enc.json` | Encrypted tree, safe to publish with a strong password |
+| `data/family.anchors.public.json` | Deliberately public identifiers and reviewed labels |
+| `api/generated/` | Matching backend allowlist and graph revision |
+| `config/production.json` | Public production endpoint/sign-in metadata |
+| `config/local.json` | Optional ignored local configuration; features disabled by default |
+| `dist/` | Exact public file manifest, assembled by the build |
+| `data/family.template.json` | Fictional starter data |
 
-That local `Save` writes directly to:
-
-- `data/family.private.json`
-- `data/family.enc.json`
-
-Public anchor generation additionally writes:
-
-- `data/family.anchors.public.json`
-- `api/generated/public-anchor-allowlist.json`
-- `api/generated/canonical-revision.json`
-
-## Manual Editing
-
-If you prefer editing data directly, change `data/family.private.json` and then run:
-
-```powershell
-$env:FAMILY_TREE_PASSWORD="choose-your-own-password"
-npm run encrypt
-npm run generate:anchors
-npm run validate
-```
-
-## Data Shape
-
-Each person is one object in the array.
-
-- `data`: person fields
-- `rels`: relationships to other ids
-
-Example:
-
-```json
-{
-  "id": "person-123",
-  "data": {
-    "first name": "First",
-    "last name": "Last",
-    "birthday": "2000",
-    "avatar": "",
-    "gender": "F"
-  },
-  "rels": {
-    "parents": ["parent-1", "parent-2"],
-    "children": ["child-1"],
-    "spouses": ["spouse-1"]
-  },
-  "privacy": {
-    "publicAnchor": false,
-    "publicLabel": "",
-    "publicLifespan": "",
-    "publicBranchLabel": ""
-  }
-}
-```
-
-All three relationship arrays are required, including when empty. Public
-anchors are explicit opt-in and publish only reviewed values from `privacy`.
-See `docs/family-data-invariants.md` and `docs/privacy-model.md`.
-
-## Guest Suggestions
-
-`Suggest a correction` offers two independent modes:
-
-- `Simple form` preserves the existing access-code-protected text submission.
-- `Visual tree` builds and previews an additive branch locally around one
-  approved public anchor, then submits the structured graph after an explicit
-  confirmation and separate access-code step.
-
-The visual workspace never loads the private canonical source or decrypts the
-protected tree. See `docs/visual-suggestions.md` for its schema and security
-boundary.
-
-## Administrator Review
-
-After the family tree is unlocked, the `Review` entry opens a separate Cognito
-sign-in. Cognito authentication is independent of the family password and the
-guest submission code. Authenticated administrators can inspect text and graph
-suggestions, compare Original/Suggestion/Overlay graph views, and set pending,
-accepted, or rejected status.
-
-Accepting a graph downloads a deterministic additions-only JSON patch. The
-browser does not modify canonical data. Review the patch and apply it locally:
-
-```bash
-FAMILY_TREE_PASSWORD='your-local-family-password' \
-  npm run apply:additions -- --patch /path/to/family-additions-ID.json
-```
-
-The applicator validates the current canonical file and revision, prepares all
-generated outputs before replacement, creates an ignored backup under
-`data/backups/`, and validates the public build. See `docs/admin-review.md`.
-
-## Notes
-
-- This is privacy for trusted sharing, not strong server-side security.
-- Do not commit `data/family.private.json`.
-- Do not edit `data/family.enc.json` manually.
-- `sessionStorage` is used only for the current browser session.
+Use Node.js 22 or newer. The static edition has no third-party npm runtime
+dependencies. Browser assets are vendored.
 
 ## Maintenance
 
-See `MAINTAINER.md` for the operational workflow, validation checklist, and customization notes.
+```powershell
+npm run prepare -- --dry-run
+npm run verify
+npm run recover -- --inspect
+npm run build:production
+```
 
-## Optional Guest Suggestions
+A dry run does not decrypt or change live family artifacts. `verify` runs one
+combined syntax, fixture/API, validation, and public-build batch. On Windows, the
+password wrapper prompts without putting the password in command history:
 
-The core site is static and read-only. An optional AWS SAM stack can collect
-guest suggestions without exposing the private family data or changing the
-local editing workflow. See `docs/suggestions-api.md` for deployment,
-configuration, security boundaries, and operational notes.
+```powershell
+.\scripts\family-maintenance.ps1 prepare
+.\scripts\family-maintenance.ps1 backup
+.\scripts\family-maintenance.ps1 release:prepare
+```
+
+Other shells can supply `FAMILY_TREE_PASSWORD` locally for one command. Never put
+it in Git, GitHub Actions, a URL, or a command argument. `encrypt` and
+`generate:anchors` are compatibility aliases for the complete preparation
+workflow; they no longer independently replace public files.
+
+New public labels require explicit review. Use
+`npm run prepare -- --review-publication --dry-run` to write a private preview.
+After inspecting it, use the password wrapper with `prepare --approve-publication`.
+Do not run `enable:all-anchors` for ordinary edits: it deliberately proposes
+publishing every person's display name and birthday.
+
+## Publish
+
+1. Save/prepare the tree locally.
+2. Run `.\scripts\family-maintenance.ps1 release:prepare`. It decrypts the
+   production artifact, compares it to the canonical source, and writes
+   `config/publication.json` containing only the public build digest.
+3. Review the changed encrypted/catalog/backend/config files and commit them,
+   including the publication receipt.
+4. In GitHub repository Settings → Pages, select **GitHub Actions**.
+5. Run **Publish personal edition** from Actions on `main`.
+
+The workflow uploads only `dist/` and rejects output that differs from the locally
+verified release. The password and private source stay on your computer. The
+receipt records a trusted maintainer's local check; it is not an independent
+cryptographic proof of decryption.
+
+The existing production endpoints were preserved in `config/production.json`.
+Local suggestions/review stay disabled unless explicitly configured. No live
+cloud deployment or billing change is part of this repair.
+
+## More detail
+
+- [Maintainer instructions](MAINTAINER.md): setup, password rotation, restore, and publishing.
+- [Privacy model](docs/privacy-model.md): public labels and the shared-password boundary.
+- [Administrator review](docs/admin-review.md): review and apply additions locally.
+- [Current repair progress](docs/personal-edition-repair-progress.md).
+- [Stabilization plan](docs/personal-edition-stabilization-plan.md) and
+  [six-stage agent playbook](docs/personal-edition-agent-plan/README.md).
