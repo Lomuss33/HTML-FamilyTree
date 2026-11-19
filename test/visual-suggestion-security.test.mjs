@@ -10,7 +10,10 @@ const visualModulePaths = [
   "assets/suggestions/graph-adapter.js",
   "assets/suggestions/public-anchor-catalog.js",
   "assets/suggestions/visual-editor.js",
-  "assets/suggestions/submission-api.js"
+  "assets/suggestions/submission-api.js",
+  "assets/suggestions/photo-attachments.js",
+  "assets/suggestions/photo-data.js",
+  "assets/viewer/photo-file.js"
 ];
 
 test("visual suggestion modules cannot access protected data, passwords, or canonical save APIs", async () => {

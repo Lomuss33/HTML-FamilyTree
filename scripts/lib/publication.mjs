@@ -15,9 +15,18 @@ export const PUBLIC_FILES = Object.freeze([
   "assets/suggestions/visual-editor.js", "assets/suggestions/draft-model.js",
   "assets/suggestions/graph-adapter.js", "assets/suggestions/public-anchor-catalog.js",
   "assets/suggestions/submission-api.js", "assets/admin/review-workspace.js",
+  "assets/suggestions/photo-data.js", "assets/suggestions/photo-attachments.js", "assets/viewer/photo-file.js",
+  "assets/suggestions/profile-change.js", "assets/suggestions/profile-change-form.js",
   "assets/admin/review-graph-adapter.js", "assets/admin/patch-model.js",
   "assets/admin/auth-client.js", "assets/admin/api-client.js",
+  "assets/admin/local-review.js",
   "assets/editor/local-api.js", "assets/editor/card-draft.js", "assets/viewer/editor-state.js", "assets/viewer/card-format.js",
+  "assets/editor/family-edit.js", "assets/editor/family-edit-form.js",
+  "assets/viewer/person-browser.js",
+  "assets/viewer/relationship-path.js",
+  "assets/viewer/public-tree.js",
+  "assets/viewer/profile-data.js", "assets/viewer/profile-editor.js",
+  "assets/viewer/media-data.js", "assets/viewer/photo-client.js",
   "data/family.enc.json", "data/family.anchors.public.json"
 ]);
 export const PUBLIC_OUTPUT_FILES = Object.freeze([...PUBLIC_FILES, "assets/site-config.js", ".nojekyll"]);
@@ -109,7 +118,10 @@ async function buildUnlocked(paths, { environment = "local", runtimeConfig } = {
   const config = await loadRuntimeConfig(paths, environment, runtimeConfig);
   const source = await canonicalPath(paths, { required: false });
   if (source) {
-    const expected = buildPublicAnchorArtifacts(await readJson(source));
+    // A legacy catalog stays read-only until the owner prepares the new public
+    // links with their password. Building never upgrades real family artifacts.
+    const existingCatalog = await readJson(paths.catalog);
+    const expected = buildPublicAnchorArtifacts(await readJson(source), { includeRelationships: Object.hasOwn(existingCatalog, "relationships") });
     for (const key of ["catalog", "allowlist", "revision"]) {
       if (stableStringify(expected[key]) !== stableStringify(await readJson(paths[key]))) {
         throw new FamilyWorkflowError("STALE_ARTIFACTS", "Prepare the public artifacts from the current source before building.", 409);

@@ -194,3 +194,35 @@ test("submission module never persists codes or calls the local canonical save e
   assert.doesNotMatch(source, /\/api\/save/);
   assert.doesNotMatch(source, /family\.private\.json|family\.enc\.json/);
 });
+
+test("disabled local suggestions cannot fall back to a configured production service", async () => {
+  const local = await import("../assets/suggestions/submission-api.js?local-mode-test");
+  const calls = [];
+  const fetchImpl = async url => { calls.push(url); return okResponse(); };
+  const config = { suggestionsApiUrl: API_URL };
+  local.setLocalSuggestionsEnabled(false);
+  assert.equal(local.getSuggestionsApiUrl(config), "");
+  await assert.rejects(local.submitSuggestionRequest({}, { fetchImpl }), { code: "NOT_CONFIGURED" });
+  assert.deepEqual(calls, []);
+  local.setLocalSuggestionsEnabled(true);
+  assert.equal(local.getSuggestionsApiUrl(config), "/api/suggestions");
+  await local.submitSuggestionRequest(buildTextSuggestionRequest({ submitterName: "Fictional visitor", message: "Example", accessCode: "fictional-code" }), { fetchImpl });
+  assert.deepEqual(calls, ["/api/suggestions"]);
+});
+
+test("photo upload stays disabled for cloud-only configuration and uses the local code boundary when enabled", async () => {
+  const local = await import("../assets/suggestions/submission-api.js?photo-local-mode-test");
+  const calls = [];
+  const fetchImpl = async (url, options) => { calls.push({ url, options }); return { ok: true, json: async () => ({ ok: true, token: "a".repeat(64) }) }; };
+  await assert.rejects(local.uploadSuggestionPhoto({ accessCode: "fictional-code" }, fetchImpl), { code: "NOT_CONFIGURED" });
+  local.setSuggestionPhotosEnabled(true);
+  await assert.rejects(local.uploadSuggestionPhoto({ accessCode: "fictional-code" }, fetchImpl), { code: "NOT_CONFIGURED" });
+  assert.equal(calls.length, 0);
+  local.setLocalSuggestionsEnabled(true);
+  await local.uploadSuggestionPhoto({ accessCode: "fictional-code", content: "fictional-bytes" }, fetchImpl);
+  assert.equal(calls[0].url, "/api/suggestions/photos");
+  assert.equal(calls[0].options.credentials, "omit");
+  assert.equal(calls[0].options.redirect, "error");
+  assert.equal(JSON.parse(calls[0].options.body).accessCode, "fictional-code");
+  assert.equal(calls[0].options.body.includes("password"), false);
+});

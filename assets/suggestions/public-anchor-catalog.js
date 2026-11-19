@@ -26,7 +26,7 @@ export function validatePublicAnchorCatalog(value) {
   if (!isPlainObject(value)) {
     throw new Error("Public anchor catalog must be an object.");
   }
-  requireExactKeys(value, ROOT_KEYS, "Public anchor catalog", issues);
+  requireAllowedKeys(value, ROOT_KEYS, ["relationships"], "Public anchor catalog", issues);
   if (value.schemaVersion !== 1) issues.push("schemaVersion must be 1.");
   validateRevision(value.catalogVersion, "catalogVersion", issues);
   validateRevision(value.sourceRevision, "sourceRevision", issues);
@@ -60,6 +60,10 @@ export function validatePublicAnchorCatalog(value) {
     });
   }
 
+  if ("relationships" in value) {
+    try { validatePublicRelationships(value.relationships, new Set((value.anchors ?? []).map(anchor => anchor?.id))); }
+    catch { issues.push("Public relationships must be sorted, unique direct links between approved anchors."); }
+  }
   if (issues.length > 0) {
     throw new Error(`Public anchor catalog is invalid (${issues.length} issue${issues.length === 1 ? "" : "s"}):\n${issues.join("\n")}`);
   }
@@ -68,8 +72,42 @@ export function validatePublicAnchorCatalog(value) {
     schemaVersion: 1,
     catalogVersion: value.catalogVersion,
     sourceRevision: value.sourceRevision,
-    anchors: value.anchors.map((anchor) => ({ ...anchor }))
+    anchors: value.anchors.map((anchor) => ({ ...anchor })),
+    ...("relationships" in value ? { relationships: value.relationships.map(edge => ({ ...edge })) } : {})
   });
+}
+
+export const publicRelationshipKey = edge => JSON.stringify([edge.type, edge.from, edge.to]);
+
+export function validatePublicRelationships(relationships, publicIds) {
+  if (!Array.isArray(relationships)) throw new Error("Public relationships must be an array.");
+  let previous = null;
+  const incoming = new Map([...publicIds].map(id => [id, 0]));
+  const children = new Map([...publicIds].map(id => [id, []]));
+  for (const edge of relationships) {
+    if (!isPlainObject(edge) || Object.keys(edge).sort().join() !== "from,to,type"
+      || !["parentOf", "spouseOf"].includes(edge.type)
+      || typeof edge.from !== "string" || typeof edge.to !== "string"
+      || !publicIds.has(edge.from) || !publicIds.has(edge.to) || edge.from === edge.to
+      || (edge.type === "spouseOf" && edge.from >= edge.to)) throw new Error("Invalid public relationship.");
+    const key = publicRelationshipKey(edge);
+    if (previous !== null && previous >= key) throw new Error("Public relationships must be sorted and unique.");
+    previous = key;
+    if (edge.type === "parentOf") {
+      incoming.set(edge.to, incoming.get(edge.to) + 1);
+      if (incoming.get(edge.to) > 2) throw new Error("Too many public parents.");
+      children.get(edge.from).push(edge.to);
+    }
+  }
+  const ready = [...incoming.keys()].filter(id => incoming.get(id) === 0);
+  for (let index = 0; index < ready.length; index++) {
+    for (const child of children.get(ready[index])) {
+      incoming.set(child, incoming.get(child) - 1);
+      if (incoming.get(child) === 0) ready.push(child);
+    }
+  }
+  if (ready.length !== publicIds.size) throw new Error("Public ancestry contains a cycle.");
+  return relationships;
 }
 
 export function filterPublicAnchors(anchors, query) {

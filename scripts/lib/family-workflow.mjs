@@ -8,19 +8,26 @@ import { decryptFamily, digest, encryptFamily, familyRevision, jsonText, validat
 import { artifactTargets, commitArtifactSet, inspectTransactions, operationReceipt, validOperationId, withWriterLock } from "./file-transaction.mjs";
 import { normalizeLegacyFamily } from "./migrate-family.mjs";
 import { encryptedPayloadDigest } from "./public-bytes.mjs";
+import { publicRelationshipKey } from "../../assets/suggestions/public-anchor-catalog.js";
+import { verifyFamilyMedia } from "./media-store.mjs";
 
 export function publicationDiff(before, after) {
   const old = new Map((before?.anchors ?? []).map(value => [value.id, value]));
   const next = new Map(after.anchors.map(value => [value.id, value]));
+  const oldEdges = new Set((before?.relationships ?? []).map(publicRelationshipKey));
+  const nextEdges = new Set((after.relationships ?? []).map(publicRelationshipKey));
   return {
     added: after.anchors.filter(value => !old.has(value.id)),
     removed: [...old.values()].filter(value => !next.has(value.id)),
     changed: after.anchors.filter(value => old.has(value.id) && stableStringify(value) !== stableStringify(old.get(value.id)))
-      .map(value => ({ before: old.get(value.id), after: value }))
+      .map(value => ({ before: old.get(value.id), after: value })),
+    addedRelationships: (after.relationships ?? []).filter(edge => !oldEdges.has(publicRelationshipKey(edge))),
+    removedRelationships: (before?.relationships ?? []).filter(edge => !nextEdges.has(publicRelationshipKey(edge)))
   };
 }
 
-const changedPublication = (diff) => diff.added.length + diff.removed.length + diff.changed.length > 0;
+const changedPublication = diff => diff.added.length + diff.removed.length + diff.changed.length
+  + diff.addedRelationships.length + diff.removedRelationships.length > 0;
 
 async function assertNoInterruptedTransaction(paths) {
   for (const { journal } of await inspectTransactions(paths)) {
@@ -62,12 +69,17 @@ export function createFamilyWorkflow(paths, { fault, approvalLifetimeMs = 5 * 60
   const approvals = new Map();
   return {
     snapshot: () => readFamilySnapshot(paths),
+    async verifyPassword(password) {
+      await assertSafePath(paths.root, paths.encrypted);
+      await decryptFamily(await readJson(paths.encrypted), password);
+    },
     async openSnapshot({ password, payloadDigest }) {
       const snapshot = await readFamilySnapshot(paths);
       if (snapshot.payloadDigest !== payloadDigest) throw new FamilyWorkflowError("STALE_SNAPSHOT", "The encrypted tree changed. Reload and unlock again.", 409);
       await verifySnapshotPassword(paths, snapshot, password);
       const actual = normalizeLegacyFamily(await decryptFamily(await readJson(paths.encrypted), password)).nodes;
-      return { ...snapshot, needsPreparation: familyRevision(actual) !== snapshot.privateRevision };
+      const catalog = await readJson(paths.catalog);
+      return { ...snapshot, needsPreparation: familyRevision(actual) !== snapshot.privateRevision || !Object.hasOwn(catalog, "relationships") };
     },
     receipt: (operationId) => operationReceipt(paths, operationId),
     async save(request) {
@@ -105,6 +117,7 @@ export function createFamilyWorkflow(paths, { fault, approvalLifetimeMs = 5 * 60
           throw new FamilyWorkflowError("STALE_SNAPSHOT", "The saved tree changed. Your draft has been kept.", 409);
         }
         if (operation !== "initialize") await verifySnapshotPassword(paths, current, password, { allowManualSource: operation === "prepare" || operation === "rotate" });
+        await verifyFamilyMedia(paths, candidate);
         const artifacts = buildPublicAnchorArtifacts(candidate);
         const previousCatalog = emptyInitialization ? { anchors: [] } : await readJson(paths.catalog);
         const diff = publicationDiff(previousCatalog, artifacts.catalog);

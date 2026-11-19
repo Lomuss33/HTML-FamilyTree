@@ -4,6 +4,7 @@ import { parseArgs, projectPaths, readJson, FamilyWorkflowError } from "./lib/pr
 import { decryptFamily } from "./lib/family-crypto.mjs";
 import { createFamilyWorkflow } from "./lib/family-workflow.mjs";
 import { validateFamilyData } from "./validate-family-data.mjs";
+import { copyFamilyMedia, verifyFamilyMedia } from "./lib/media-store.mjs";
 
 const options = parseArgs(process.argv.slice(2));
 try {
@@ -11,10 +12,15 @@ try {
   const password = process.env.FAMILY_TREE_PASSWORD;
   const nodes = await decryptFamily(await readJson(path.resolve(options.backup)), process.env.FAMILY_TREE_BACKUP_PASSWORD ?? password);
   validateFamilyData(nodes);
+  const backupFile = path.resolve(options.backup);
+  const backupMedia = { root: path.dirname(backupFile), media: backupFile + ".media" };
+  await verifyFamilyMedia(backupMedia, nodes);
   if (options["dry-run"]) console.log(JSON.stringify({ dryRun: true, personCount: nodes.length, decryption: "verified", liveFilesChanged: false }));
   else {
-    const workflow = createFamilyWorkflow(projectPaths(options.root));
+    const paths = projectPaths(options.root);
+    const workflow = createFamilyWorkflow(paths);
     const snapshot = options.initialize ? { privateRevision: null, snapshotId: null } : await workflow.snapshot();
+    await copyFamilyMedia(backupMedia, paths, nodes);
     const result = await workflow.save({ nodes, password, operation: options.initialize ? "initialize" : "prepare", operationId: randomUUID(),
       expectedRevision: snapshot.privateRevision, snapshotId: snapshot.snapshotId, approvePublication: options["approve-publication"] === true });
     if (!result.ok) throw new FamilyWorkflowError("PUBLICATION_REVIEW", "Restore changes public labels. Review the backup before explicitly approving publication.", 409);

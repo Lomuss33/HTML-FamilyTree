@@ -10,5 +10,22 @@ dist.build-*/
 dist.previous-*/
 config/local.json
 config/production.local.json
+config/homelab.local.json
 test-results/
 playwright-report/
+
+# Local credentials and recovery copies never belong in Git.
+.env
+.env.*
+!.env.example
+*.bak
+*.backup
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+# Public, fictional HTTPS fixtures used only in isolated tests.
+!test/fixtures/tls/fictional.key.pem
+!test/fixtures/tls/fictional.cert.pem

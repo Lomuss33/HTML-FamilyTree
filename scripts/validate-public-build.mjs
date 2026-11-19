@@ -47,7 +47,7 @@ export async function validateProject({ root, requirePassword = false, password 
   }
   const nodes = await readJson(source, "canonical source");
   validateFamilyData(nodes);
-  const expected = buildPublicAnchorArtifacts(nodes);
+  const expected = buildPublicAnchorArtifacts(nodes, { includeRelationships: Object.hasOwn(catalog, "relationships") });
   for (const key of ["catalog", "allowlist", "revision"]) {
     if (stableStringify(expected[key]) !== stableStringify({ catalog, allowlist, revision }[key])) {
       throw new FamilyWorkflowError("STALE_ARTIFACTS", "Prepared public/backend artifacts differ from the private source. Run the preparation workflow.", 409);

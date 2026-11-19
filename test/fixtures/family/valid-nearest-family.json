@@ -1,0 +1,23 @@
+[
+  {"id":"near-focus","data":{"first name":"Focus","last name":"Demo","birthday":"1970","gender":"M","notes":"Fictional archive note"},"rels":{"parents":["near-father","near-mother"],"spouses":["near-partner-one","near-partner-two"],"children":["near-child-one","near-child-two","near-child-three"]}},
+  {"id":"near-father","data":{"first name":"Father","last name":"Demo","birthday":"1940","gender":"M"},"rels":{"parents":["near-grandparent"],"spouses":["near-mother"],"children":["near-focus","near-sibling","near-half-one"]}},
+  {"id":"near-mother","data":{"first name":"Mother","last name":"Demo","birthday":"1942","gender":"F"},"rels":{"parents":[],"spouses":["near-father"],"children":["near-focus","near-sibling","near-half-two"]}},
+  {"id":"near-partner-one","data":{"first name":"PartnerOne","last name":"Demo","birthday":"1972","gender":"F"},"rels":{"parents":["near-inlaw"],"spouses":["near-focus"],"children":["near-child-one"]}},
+  {"id":"near-partner-two","data":{"first name":"PartnerTwo","last name":"Demo","birthday":"1973","gender":"F"},"rels":{"parents":[],"spouses":["near-focus"],"children":["near-child-two"]}},
+  {"id":"near-coparent","data":{"first name":"CoParent","last name":"Demo","birthday":"1971","gender":"F"},"rels":{"parents":[],"spouses":[],"children":["near-child-three"]}},
+  {"id":"near-sibling","data":{"first name":"Sibling","last name":"Demo","birthday":"1974","gender":"F"},"rels":{"parents":["near-father","near-mother"],"spouses":["near-sibling-partner"],"children":["near-nephew"]}},
+  {"id":"near-half-one","data":{"first name":"HalfOne","last name":"Demo","birthday":"1978","gender":"M"},"rels":{"parents":["near-father"],"spouses":[],"children":[]}},
+  {"id":"near-half-two","data":{"first name":"HalfTwo","last name":"Demo","birthday":"1979","gender":"F"},"rels":{"parents":["near-mother"],"spouses":[],"children":[]}},
+  {"id":"near-child-one","data":{"first name":"ChildOne","last name":"Demo","birthday":"1995","gender":"M"},"rels":{"parents":["near-focus","near-partner-one"],"spouses":["near-child-partner"],"children":["near-grandchild"]}},
+  {"id":"near-child-two","data":{"first name":"ChildTwo","last name":"Demo","birthday":"1997","gender":"F"},"rels":{"parents":["near-focus","near-partner-two"],"spouses":[],"children":[]}},
+  {"id":"near-child-three","data":{"first name":"ChildThree","last name":"Demo","birthday":"1999","gender":"F"},"rels":{"parents":["near-focus","near-coparent"],"spouses":[],"children":[]}},
+  {"id":"near-child-partner","data":{"first name":"ChildPartner","last name":"Demo","birthday":"1996","gender":"F"},"rels":{"parents":[],"spouses":["near-child-one"],"children":["near-grandchild"]}},
+  {"id":"near-sibling-partner","data":{"first name":"SiblingPartner","last name":"Demo","birthday":"1973","gender":"M"},"rels":{"parents":[],"spouses":["near-sibling"],"children":["near-nephew"]}},
+  {"id":"near-grandparent","data":{"first name":"Grandparent","last name":"Demo","birthday":"1910","gender":"F"},"rels":{"parents":[],"spouses":[],"children":["near-father","near-uncle"]}},
+  {"id":"near-uncle","data":{"first name":"Uncle","last name":"Demo","birthday":"1943","gender":"M"},"rels":{"parents":["near-grandparent"],"spouses":[],"children":["near-cousin"]}},
+  {"id":"near-cousin","data":{"first name":"Cousin","last name":"Demo","birthday":"1970","gender":"F"},"rels":{"parents":["near-uncle"],"spouses":[],"children":[]}},
+  {"id":"near-nephew","data":{"first name":"Nephew","last name":"Demo","birthday":"2002","gender":"M"},"rels":{"parents":["near-sibling","near-sibling-partner"],"spouses":[],"children":[]}},
+  {"id":"near-grandchild","data":{"first name":"Grandchild","last name":"Demo","birthday":"2020","gender":"F"},"rels":{"parents":["near-child-one","near-child-partner"],"spouses":[],"children":[]}},
+  {"id":"near-inlaw","data":{"first name":"Inlaw","last name":"Demo","birthday":"1945","gender":"M"},"rels":{"parents":[],"spouses":[],"children":["near-partner-one"]}},
+  {"id":"near-disconnected","data":{"first name":"Disconnected","last name":"Demo","birthday":"1980","gender":"F"},"rels":{"parents":[],"spouses":[],"children":[]}}
+]

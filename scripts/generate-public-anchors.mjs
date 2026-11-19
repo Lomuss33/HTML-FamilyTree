@@ -1,6 +1,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { safeErrorMessage } from "./lib/project-paths.mjs";
+import { publicRelationshipKey } from "../assets/suggestions/public-anchor-catalog.js";
 import {
   compareStrings,
   computeAnchorCatalogVersion,
@@ -10,7 +11,7 @@ import {
 
 export const PUBLIC_CATALOG_SCHEMA_VERSION = 1;
 
-export function buildPublicAnchorArtifacts(family, options = {}) {
+export function buildPublicAnchorArtifacts(family, { includeRelationships = true, ...options } = {}) {
   validateFamilyData(family, options);
 
   const anchors = family
@@ -31,7 +32,8 @@ export function buildPublicAnchorArtifacts(family, options = {}) {
       schemaVersion: PUBLIC_CATALOG_SCHEMA_VERSION,
       catalogVersion,
       sourceRevision,
-      anchors
+      anchors,
+      ...(includeRelationships ? { relationships: buildPublicRelationships(family, new Set(anchorIds)) } : {})
     },
     allowlist: {
       catalogVersion,
@@ -43,6 +45,25 @@ export function buildPublicAnchorArtifacts(family, options = {}) {
       sourceRevision
     }
   };
+}
+
+function buildPublicRelationships(family, publicIds) {
+  const edges = new Map();
+  for (const person of family) {
+    if (!publicIds.has(person.id)) continue;
+    for (const parent of person.rels.parents) {
+      if (!publicIds.has(parent)) continue;
+      const edge = { from: parent, to: person.id, type: "parentOf" };
+      edges.set(publicRelationshipKey(edge), edge);
+    }
+    for (const spouse of person.rels.spouses) {
+      if (!publicIds.has(spouse)) continue;
+      const [from, to] = [person.id, spouse].sort();
+      const edge = { from, to, type: "spouseOf" };
+      edges.set(publicRelationshipKey(edge), edge);
+    }
+  }
+  return [...edges.entries()].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, edge]) => edge);
 }
 
 function buildPublicAnchor(person) {

@@ -2,6 +2,8 @@ import { createAdminAuthClient } from "./auth-client.js";
 import { AdminApiError, createAdminApiClient } from "./api-client.js";
 import { createFamilyAdditionsPatch, serializeFamilyAdditionsPatch } from "./patch-model.js";
 import { createReviewCardHtml, suggestionToReviewNodes } from "./review-graph-adapter.js";
+import { createPhotoClient } from "../viewer/photo-client.js";
+import { PROFILE_CHANGE_FIELDS, applyProfileChange, profileFieldText } from "../suggestions/profile-change.js";
 
 const REVISION_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const PUBLIC_CATALOG_URL = "./data/family.anchors.public.json";
@@ -23,12 +25,16 @@ class AdminReviewWorkspace {
     openButton,
     countBadge,
     getCanonicalNodes,
+    getPhotoTargets = getCanonicalNodes,
+    canStagePhotos = () => false,
     isCanonicalDirty = () => false,
     getFamilyChart = () => globalThis.f3,
     config = globalThis.window?.FAMILY_TREE_CONFIG,
     fetchImpl = globalThis.fetch?.bind(globalThis),
     authClient,
     apiClient,
+    onStageDraft,
+    onStagePhotos,
     downloadFile = defaultDownloadFile
   }) {
     if (!(root instanceof HTMLDialogElement)) throw new Error("Admin review dialog is required.");
@@ -36,6 +42,8 @@ class AdminReviewWorkspace {
     this.openButton = openButton;
     this.countBadge = countBadge;
     this.getCanonicalNodes = getCanonicalNodes;
+    this.getPhotoTargets = getPhotoTargets;
+    this.canStagePhotos = canStagePhotos;
     this.isCanonicalDirty = isCanonicalDirty;
     this.generation = 0;
     this.selectionGeneration = 0;
@@ -45,6 +53,9 @@ class AdminReviewWorkspace {
     this.getFamilyChart = getFamilyChart;
     this.fetchImpl = fetchImpl;
     this.downloadFile = downloadFile;
+    this.onStageDraft = onStageDraft;
+    this.onStagePhotos = onStagePhotos;
+    this.attachmentPhotos = null;
     this.auth = authClient ?? createAdminAuthClient({ config: config?.adminAuth, fetchImpl });
     this.api = apiClient ?? createAdminApiClient({
       apiUrl: config?.adminApiUrl,
@@ -77,6 +88,7 @@ class AdminReviewWorkspace {
 
   onFamilyUnlocked() {
     this.familyUnlocked = true;
+    this.auth.onFamilyUnlocked?.();
     this.openButton?.classList.remove("is-hidden");
     if (this.auth.getSession()) void this.refreshPendingCount();
   }
@@ -98,6 +110,8 @@ class AdminReviewWorkspace {
     this.elements.patchJson.textContent = "";
     this.elements.list.replaceChildren();
     this.elements.reviewNote.value = "";
+    this.attachmentPhotos?.clear(); this.attachmentPhotos = null;
+    this.elements.photoList.replaceChildren(); this.elements.photos.hidden = true;
     for (const key of ["detailName", "detailEmail", "detailRelationship", "detailMessage", "detailId", "anchorId"]) this.elements[key].textContent = "";
     this.elements.graphPeople.replaceChildren(); this.elements.graphRelationships.replaceChildren();
     this.#renderEmptyDetail();
@@ -109,7 +123,9 @@ class AdminReviewWorkspace {
   }
 
   onCanonicalDirtyChanged() {
-    this.elements.accept.disabled = this.busy || this.isCanonicalDirty();
+    this.elements.accept.disabled = this.busy || this.#acceptBlocked();
+    this.elements.addToDraft.disabled = this.busy || this.isCanonicalDirty() || !this.#hasDraft();
+    this.elements.photosToDraft.disabled = this.busy || !this.canStagePhotos();
     if (this.isCanonicalDirty()) this.#setReviewStatus("Save or discard local edits before accepting a suggestion.", true);
     else this.#setReviewStatus("");
   }
@@ -206,6 +222,8 @@ class AdminReviewWorkspace {
     this.elements.markPending.addEventListener("click", () => void this.#review("pending"));
     this.elements.reject.addEventListener("click", () => void this.#review("rejected"));
     this.elements.accept.addEventListener("click", () => void this.#review("accepted"));
+    this.elements.addToDraft.addEventListener("click", () => void this.addToDraft());
+    this.elements.photosToDraft.addEventListener("click", () => void this.addPhotosToDraft());
     this.elements.downloadPatch.addEventListener("click", () => void this.downloadPatch());
   }
 
@@ -253,7 +271,7 @@ class AdminReviewWorkspace {
     this.elements.detailType.textContent = suggestion.type === "graph" ? "Visual" : "Text";
     this.elements.detailStatus.textContent = suggestion.status;
     this.elements.detailStatus.dataset.status = suggestion.status;
-    this.elements.detailTitle.textContent = suggestion.type === "graph" ? "Proposed family branch" : "Written correction";
+    this.elements.detailTitle.textContent = suggestion.profileChange ? "Ispravak podataka o osobi" : suggestion.type === "graph" ? "Proposed family branch" : "Written correction";
     this.elements.detailId.textContent = `Suggestion ID: ${suggestion.id}`;
     this.elements.detailDate.textContent = formatDate(suggestion.createdAt, true);
     this.elements.detailName.textContent = suggestion.submitter?.name || "—";
@@ -263,10 +281,15 @@ class AdminReviewWorkspace {
     this.elements.textDetail.hidden = suggestion.type !== "text";
     this.elements.graphDetail.hidden = suggestion.type !== "graph";
     this.elements.detailMessage.textContent = suggestion.payload?.message || "No message supplied.";
-    this.elements.accept.textContent = suggestion.type === "graph" ? "Accept & download patch" : "Accept";
-    this.elements.accept.disabled = this.busy || this.isCanonicalDirty();
+    this.elements.accept.textContent = suggestion.type === "graph" || suggestion.profileChange
+      ? this.onStageDraft ? "Odobri i dodaj u nacrt" : "Accept & download patch" : "Accept";
+    this.elements.addToDraft.hidden = !this.onStageDraft || suggestion.status !== "accepted" || (suggestion.type !== "graph" && !suggestion.profileChange);
+    this.elements.addToDraft.disabled = this.busy || this.isCanonicalDirty();
     this.elements.downloadPatch.hidden = suggestion.status !== "accepted" || suggestion.type !== "graph";
     this.#setReviewStatus("");
+    this.#renderPhotos();
+    this.#renderProfileChange();
+    this.elements.accept.disabled = this.busy || this.#acceptBlocked();
 
     if (suggestion.type === "graph") {
       await this.#loadCurrentRevision();
@@ -281,8 +304,115 @@ class AdminReviewWorkspace {
   }
 
   #renderEmptyDetail() {
+    this.attachmentPhotos?.clear(); this.attachmentPhotos = null;
+    this.elements.photoList.replaceChildren(); this.elements.photos.hidden = true;
     this.elements.emptyDetail.hidden = false;
     this.elements.detailContent.hidden = true;
+    this.elements.profileChange.replaceChildren(); this.elements.profileChange.hidden = true;
+  }
+
+  #selectedProfileFields() {
+    return [...this.elements.profileChange.querySelectorAll("input[data-accepted-profile-field]:checked")].map(input => input.dataset.acceptedProfileField);
+  }
+
+  #hasDraft() {
+    return this.selected?.profileChange ? Boolean(this.onStageDraft && this.selected.profileApproval) : Boolean(this.currentPatch);
+  }
+
+  #acceptBlocked() {
+    if (this.isCanonicalDirty()) return true;
+    if (this.selected?.profileChange) return !this.onStageDraft || this.selected.status === "accepted" || !this.#selectedProfileFields().length;
+    return this.selected?.type === "graph" && !this.currentPatch;
+  }
+
+  #renderProfileChange() {
+    const section = this.elements.profileChange;
+    section.replaceChildren(); section.hidden = !this.selected?.profileChange;
+    if (section.hidden) return;
+    const change = this.selected.profileChange;
+    const nodes = this.getCanonicalNodes();
+    const person = nodes.find(value => value.id === change.personId);
+    function text(tag, value, className) {
+      const element = document.createElement(tag); element.textContent = value;
+      if (className) element.className = className;
+      return element;
+    }
+    if (!person) {
+      section.append(text("p", "Osoba više nije u trenutačnom stablu. Ispravak se ne može prihvatiti.", "status-message is-error"));
+      return;
+    }
+    section.append(text("h3", displayCanonicalPerson(person)),
+      text("p", "Označi promjene koje prihvaćaš. Bilješke i mjesta života dodaju se postojećim zapisima. Javna vidljivost ostaje nepromijenjena; nacrt spremaš gumbom Save."));
+    const accepted = this.selected.status === "accepted";
+    const fields = Object.keys(change.changes);
+    const proposed = applyProfileChange(nodes, change, fields).find(value => value.id === change.personId);
+    for (const field of PROFILE_CHANGE_FIELDS.filter(field => Object.hasOwn(change.changes, field.key))) {
+      const row = document.createElement("div"); row.className = "admin-profile-field";
+      const label = document.createElement("label"); label.className = "profile-change-toggle";
+      const checkbox = document.createElement("input"); checkbox.type = "checkbox";
+      checkbox.dataset.acceptedProfileField = field.key;
+      checkbox.checked = !accepted || this.selected.profileApproval?.fields.includes(field.key) === true;
+      checkbox.disabled = this.busy || accepted;
+      checkbox.addEventListener("change", () => { this.elements.accept.disabled = this.busy || this.#acceptBlocked(); });
+      label.append(checkbox, text("strong", field.label));
+      const comparison = document.createElement("dl");
+      comparison.append(text("dt", "Sada je upisano"), text("dd", profileFieldText(person.data[field.key])),
+        text("dt", "Nakon prihvaćanja"), text("dd", profileFieldText(proposed.data[field.key])));
+      row.append(label, comparison); section.append(row);
+    }
+    if (accepted) section.append(text("p", "Odobrena polja označena su kvačicom. Za drukčiji odabir vrati prijedlog na čekanje. Nakon spremanja stabla za ponovno dodavanje potreban je novi pregled."));
+  }
+
+  #renderPhotos() {
+    this.attachmentPhotos?.clear(); this.attachmentPhotos = null;
+    this.elements.photoList.replaceChildren();
+    const suggestion = this.selected;
+    const photos = suggestion?.attachments ?? [];
+    this.elements.photos.hidden = !this.onStagePhotos || !photos.length;
+    this.elements.photosToDraft.hidden = suggestion?.status !== "accepted";
+    this.elements.photosToDraft.disabled = this.busy || !this.canStagePhotos();
+    if (this.elements.photos.hidden) return;
+    const viewer = createPhotoClient({ readPhoto: photoId => this.api.photo(suggestion.id, photoId) });
+    this.attachmentPhotos = viewer;
+    for (const photo of photos) {
+      const row = document.createElement("div"); row.className = "admin-photo-item";
+      const open = document.createElement("button"); open.type = "button"; open.className = "photo-tile";
+      open.setAttribute("aria-label", "Otvori priloženu fotografiju: " + photo.name);
+      const image = document.createElement("img"); image.alt = photo.caption || photo.name;
+      const name = document.createElement("span"); name.textContent = photo.caption || photo.name;
+      open.append(image, name);
+      void viewer.preview(photo.id).then(url => { if (image.isConnected) image.src = url; }, () => { name.textContent = "Fotografija nije dostupna. " + photo.name; });
+      open.addEventListener("click", () => void viewer.show(photo).catch(error => this.#setReviewStatus(error.message, true)));
+      row.append(open);
+      const label = document.createElement("label"); label.className = "field";
+      const title = document.createElement("span"); title.textContent = "Dodaj u galeriju osobe";
+      const select = document.createElement("select"); select.dataset.photoId = photo.id;
+      select.append(new Option("Ostavi samo uz prijedlog", ""));
+      for (const person of this.getPhotoTargets()) select.append(new Option(displayCanonicalPerson(person) + (person.data.birthday ? " · " + person.data.birthday : ""), person.id));
+      select.disabled = this.busy || suggestion.status !== "accepted";
+      label.append(title, select); row.append(label); this.elements.photoList.append(row);
+    }
+  }
+
+  async addPhotosToDraft() {
+    if (this.busy || !this.onStagePhotos || this.selected?.status !== "accepted") return;
+    if (!this.canStagePhotos()) return this.#setReviewStatus("Dovrši otvorena polja prije dodavanja fotografija.", true);
+    const assignments = [...this.elements.photoList.querySelectorAll("select[data-photo-id]")]
+      .filter(select => select.value).map(select => ({ id: select.dataset.photoId, personId: select.value }));
+    if (!assignments.length) return this.#setReviewStatus("Odaberi fotografiju i osobu za njezinu galeriju.", true);
+    const generation = this.generation, selectionGeneration = this.selectionGeneration;
+    this.busy = true; this.#setActionsDisabled(true);
+    try {
+      const result = await this.api.photoDraft(this.selected.id, assignments);
+      if (generation !== this.generation || selectionGeneration !== this.selectionGeneration) return;
+      const added = this.onStagePhotos(result.draft);
+      for (const select of this.elements.photoList.querySelectorAll("select")) select.value = "";
+      this.#setReviewStatus(added === false ? "Odabrane fotografije već su u tim galerijama." : "Fotografije su u privatnom nacrtu. Pregledaj galerije pa pritisni Save.");
+    } catch (error) {
+      if (generation === this.generation && selectionGeneration === this.selectionGeneration) this.#handleApiError(error, this.elements.reviewStatus);
+    } finally {
+      if (generation === this.generation) { this.busy = false; this.#setActionsDisabled(false); }
+    }
   }
 
   #renderGraph() {
@@ -342,10 +472,12 @@ class AdminReviewWorkspace {
       this.currentPatch = createFamilyAdditionsPatch(this.selected, this.currentRevision);
       this.elements.patchJson.textContent = serializeFamilyAdditionsPatch(this.currentPatch);
       this.elements.accept.disabled = this.busy || this.isCanonicalDirty();
+      this.elements.addToDraft.disabled = this.busy || this.isCanonicalDirty();
     } catch (error) {
       this.currentPatch = null;
       this.elements.patchJson.textContent = error.message;
       this.elements.accept.disabled = true;
+      this.elements.addToDraft.disabled = true;
       this.#setReviewStatus(error.message, true);
     }
   }
@@ -384,17 +516,31 @@ class AdminReviewWorkspace {
         patch = createFamilyAdditionsPatch(suggestion, revision);
         this.currentPatch = patch;
       }
-      const result = await this.api.review(suggestion.id, { status, reviewerNote: this.elements.reviewNote.value });
+      const fields = status === "accepted" && suggestion.profileChange ? this.#selectedProfileFields() : undefined;
+      if (fields && (!fields.length || !this.onStageDraft)) throw new Error("Odaberi barem jedno predloženo polje za prihvaćanje u nacrt.");
+      const result = await this.api.review(suggestion.id, { status, reviewerNote: this.elements.reviewNote.value }, fields);
       reviewed = true;
       if (generation !== this.generation || selectionGeneration !== this.selectionGeneration) return;
       this.selected = result.suggestion;
+      let stagingError = null, alreadyRecorded = false;
+      if ((patch || fields) && this.onStageDraft) {
+        try {
+          if (!result.draft) throw new Error("Dopuna nije učitana. Ponovno je dodaj iz odobrenih prijedloga.");
+          alreadyRecorded = this.onStageDraft(result.draft) === false;
+        } catch (error) { stagingError = error; }
+      }
       const index = this.items.findIndex(item => item.id === this.selected.id);
       if (index >= 0) this.items[index] = { ...this.items[index], ...this.selected, payload: undefined };
       this.#renderList();
       // The PATCH has committed. A metadata refresh must not prevent downloading its captured patch.
       try { await this.#renderDetail(); } catch { this.elements.downloadPatch.hidden = !patch; }
       if (generation !== this.generation || selectionGeneration !== this.selectionGeneration) return;
-      if (patch) {
+      if ((patch || fields) && this.onStageDraft) {
+        this.#setReviewStatus(stagingError
+          ? "Odobreno, ali nije dodano u nacrt. " + stagingError.message
+          : alreadyRecorded ? "Odobreno. Odabrani podaci već su upisani; stablo je nepromijenjeno."
+          : "Odobreno. Dopuna je u nacrtu; zatvori pregled, provjeri stablo pa pritisni Save.", Boolean(stagingError));
+      } else if (patch) {
         try {
           this.downloadFile("family-additions-" + suggestion.id + ".json", serializeFamilyAdditionsPatch(patch));
           this.#setReviewStatus("Accepted. Patch downloaded; review and apply it locally to update the tree.");
@@ -416,6 +562,28 @@ class AdminReviewWorkspace {
     }
   }
 
+  async addToDraft() {
+    if (this.busy || !this.onStageDraft || this.selected?.status !== "accepted" || (this.selected.type !== "graph" && !this.selected.profileChange)) return;
+    if (this.isCanonicalDirty()) return this.#setReviewStatus("Najprije spremi ili odbaci postojeći nacrt.", true);
+    const generation = this.generation;
+    const selectionGeneration = this.selectionGeneration;
+    const id = this.selected.id;
+    this.busy = true;
+    this.#setActionsDisabled(true);
+    this.#setReviewStatus("Pripremam odobrenu dopunu…");
+    try {
+      const result = await this.api.draft(id);
+      if (generation !== this.generation || selectionGeneration !== this.selectionGeneration) return;
+      const added = this.onStageDraft(result.draft);
+      this.#setReviewStatus(added === false ? "Odabrani podaci već su upisani; stablo je nepromijenjeno."
+        : "Dopuna je u nacrtu. Zatvori pregled, provjeri stablo pa pritisni Save.");
+    } catch (error) {
+      if (generation === this.generation && selectionGeneration === this.selectionGeneration) this.#handleApiError(error, this.elements.reviewStatus);
+    } finally {
+      if (generation === this.generation) { this.busy = false; this.#setActionsDisabled(false); }
+    }
+  }
+
   async downloadPatch() {
     if (this.busy || this.selected?.status !== "accepted" || this.selected.type !== "graph") return;
     const generation = this.generation;
@@ -433,10 +601,16 @@ class AdminReviewWorkspace {
   }
 
   #setActionsDisabled(disabled) {
-    for (const key of ["markPending", "reject", "accept", "downloadPatch", "refresh", "statusFilter", "typeFilter", "loadMore"]) {
+    for (const key of ["markPending", "reject", "accept", "addToDraft", "photosToDraft", "downloadPatch", "refresh", "statusFilter", "typeFilter", "loadMore"]) {
       this.elements[key].disabled = disabled;
     }
-    if (!disabled) this.elements.accept.disabled = this.isCanonicalDirty() || (this.selected?.type === "graph" && !this.currentPatch);
+    if (!disabled) {
+      this.elements.accept.disabled = this.#acceptBlocked();
+      this.elements.addToDraft.disabled = this.isCanonicalDirty() || !this.#hasDraft();
+      this.elements.photosToDraft.disabled = !this.canStagePhotos();
+    }
+    for (const select of this.elements.photoList.querySelectorAll("select")) select.disabled = disabled || this.selected?.status !== "accepted";
+    for (const checkbox of this.elements.profileChange.querySelectorAll("input")) checkbox.disabled = disabled || this.selected?.status === "accepted";
   }
 
   #endpointLabel(id) {
@@ -508,6 +682,7 @@ function collectElements(root) {
     detailRelationship: get("admin-detail-relationship"),
     textDetail: get("admin-text-detail"),
     detailMessage: get("admin-detail-message"),
+    profileChange: get("admin-profile-change"),
     graphDetail: get("admin-graph-detail"),
     anchorId: get("admin-anchor-id"),
     graph: get("admin-review-chart"),
@@ -519,7 +694,11 @@ function collectElements(root) {
     markPending: get("admin-mark-pending"),
     reject: get("admin-reject"),
     accept: get("admin-accept"),
+    addToDraft: get("admin-add-to-draft"),
     downloadPatch: get("admin-download-patch"),
+    photos: get("admin-photo-attachments"),
+    photoList: get("admin-photo-list"),
+    photosToDraft: get("admin-photos-to-draft"),
     graphModeButtons: [...root.querySelectorAll("[data-admin-graph-mode]")]
   };
 }

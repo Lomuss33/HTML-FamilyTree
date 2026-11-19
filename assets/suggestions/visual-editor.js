@@ -2,6 +2,7 @@ import { VisualSuggestionDraft } from "./draft-model.js";
 import { createSuggestionCardHtml, draftToFamilyChartNodes } from "./graph-adapter.js";
 import { filterPublicAnchors, loadPublicAnchorCatalog } from "./public-anchor-catalog.js";
 import { submitVisualDraft } from "./submission-api.js";
+import { createSuggestionPhotoPicker } from "./photo-attachments.js";
 
 const PUBLIC_ANCHOR_CATALOG_URL = "./data/family.anchors.public.json";
 
@@ -41,6 +42,7 @@ class VisualSuggestionEditor {
     this.chart = null;
     this.isSubmitting = false;
     this.elements = this.#collectElements();
+    this.photos = createSuggestionPhotoPicker(this.root.querySelector("#visual-photo-attachments"));
     this.#bindEvents();
     this.#showChooser();
   }
@@ -57,8 +59,11 @@ class VisualSuggestionEditor {
   }
 
   hasDraftContent() {
-    return this.draft.hasContent();
+    return this.draft.hasContent() || this.photos.hasFiles();
   }
+
+  setPhotoSupport(enabled) { this.photos.setEnabled(enabled); }
+  hasPhotos() { return this.photos.hasFiles(); }
 
   requestDiscard(message = "Discard this visual suggestion draft?") {
     if (this.isSubmitting) return false;
@@ -72,6 +77,7 @@ class VisualSuggestionEditor {
   }
 
   reset() {
+    this.photos.clear();
     this.draft.reset();
     this.selectedAnchor = null;
     this.selectedPersonId = null;
@@ -519,7 +525,10 @@ class VisualSuggestionEditor {
     this.#setSubmitStatus("Sending visual suggestion…");
 
     try {
+      const tokens = await this.photos.tokens(details.accessCode);
+      if (tokens.length) details.photoTokens = tokens;
       const result = await this.submitDraft(this.draft, details);
+      this.photos.clear();
       this.selectedAnchor = null;
       this.selectedPersonId = null;
       this.personOperation = null;

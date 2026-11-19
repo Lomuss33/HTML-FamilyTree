@@ -5,6 +5,7 @@ import { parseArgs, projectPaths, assertSafePath, readJson, FamilyWorkflowError 
 import { withWriterLock } from "./lib/file-transaction.mjs";
 import { readFamilySnapshot } from "./lib/family-workflow.mjs";
 import { decryptFamily, encryptFamily, familyRevision, jsonText, digest } from "./lib/family-crypto.mjs";
+import { copyFamilyMedia } from "./lib/media-store.mjs";
 
 const options = parseArgs(process.argv.slice(2));
 try {
@@ -17,9 +18,11 @@ try {
     await assertSafePath(paths.root, paths.backups);
     await mkdir(paths.backups, { recursive: true, mode: 0o700 });
     const file = path.join(paths.backups, "family-" + randomUUID() + ".enc.json");
+    const photoCount = await copyFamilyMedia(paths, { ...paths, media: file + ".media" }, snapshot.nodes);
     await writeFile(file, jsonText(envelope), { flag: "wx", mode: 0o600 });
     if (familyRevision(await decryptFamily(await readJson(file), password)) !== snapshot.privateRevision) throw new Error("Backup verification failed.");
-    return { backup: path.relative(paths.root, file).replaceAll("\\", "/"), digest: digest(await readFile(file)), decryption: "verified" };
+    return { backup: path.relative(paths.root, file).replaceAll("\\", "/"), digest: digest(await readFile(file)), decryption: "verified",
+      photoCount, ...(photoCount ? { privatePhotoBackup: path.relative(paths.root, file + ".media").replaceAll("\\", "/") } : {}) };
   });
   console.log(JSON.stringify(result, null, 2));
 } catch (error) { console.error(error.code ?? "BACKUP_FAILED", "Backup could not be verified. Existing files were preserved."); process.exitCode = 1; }

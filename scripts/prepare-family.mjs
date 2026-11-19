@@ -28,6 +28,7 @@ export async function runPreparation(args = process.argv.slice(2), { transform, 
   if (options["dry-run"]) {
     const report = { dryRun: true, personCount: nodes.length, publicAnchors: expected.catalog.anchors.length,
       addedPublicLabels: diff.added.length, removedPublicLabels: diff.removed.length, changedPublicLabels: diff.changed.length,
+      addedPublicRelationships: diff.addedRelationships.length, removedPublicRelationships: diff.removedRelationships.length,
       decryption: "not-checked-dry-run" };
     console.log(JSON.stringify(report, null, 2));
     return report;
@@ -38,7 +39,7 @@ export async function runPreparation(args = process.argv.slice(2), { transform, 
   const result = await workflow.save({ nodes, password, operation, newPassword: process.env.FAMILY_TREE_NEW_PASSWORD,
     expectedRevision: snapshot.privateRevision, snapshotId: snapshot.snapshotId, operationId: randomUUID(),
     approvePublication: options["approve-publication"] === true });
-  if (!result.ok) throw new FamilyWorkflowError("PUBLICATION_REVIEW", "Public labels changed. Inspect --review-publication --dry-run, then explicitly use --approve-publication.", 409);
+  if (!result.ok) throw new FamilyWorkflowError("PUBLICATION_REVIEW", "Public data changed. Inspect --review-publication --dry-run, then explicitly use --approve-publication.", 409);
   console.log(JSON.stringify(result, null, 2));
   return result;
 }

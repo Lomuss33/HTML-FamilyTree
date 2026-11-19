@@ -1,4 +1,5 @@
 import { compareStrings, computeAnchorCatalogVersion, stableStringify } from "../validate-family-data.mjs";
+import { validatePublicRelationships } from "../../assets/suggestions/public-anchor-catalog.js";
 
 const REVISION_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const CATALOG_KEYS = ["anchors", "catalogVersion", "schemaVersion", "sourceRevision"];
@@ -10,7 +11,7 @@ const REVISION_KEYS = ["catalogVersion", "schemaVersion", "sourceRevision"];
 export function validateGeneratedArtifacts(catalog, allowlist, revision) {
   const issues = [];
 
-  requireExactKeys(catalog, CATALOG_KEYS, "Public anchor catalog", issues);
+  requireExactKeys(catalog, [...CATALOG_KEYS, ...(Object.hasOwn(catalog ?? {}, "relationships") ? ["relationships"] : [])], "Public anchor catalog", issues);
   if (catalog?.schemaVersion !== 1) {
     issues.push("Public anchor catalog schemaVersion must be 1.");
   }
@@ -93,6 +94,10 @@ export function validateGeneratedArtifacts(catalog, allowlist, revision) {
   }
 
   const catalogIds = Array.isArray(catalog?.anchors) ? catalog.anchors.map((anchor) => anchor.id) : [];
+  if (Object.hasOwn(catalog ?? {}, "relationships")) {
+    try { validatePublicRelationships(catalog.relationships, new Set(catalogIds)); }
+    catch { issues.push("Public relationships must be sorted, unique links between approved anchors only."); }
+  }
   const allowlistIds = Array.isArray(allowlist?.anchorIds) ? allowlist.anchorIds : [];
   if (Array.isArray(catalog?.anchors)) {
     const expectedCatalogVersion = computeAnchorCatalogVersion(catalog.anchors);

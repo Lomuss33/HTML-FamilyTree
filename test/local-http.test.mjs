@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import http from "node:http";
+import https from "node:https";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createLocalServer } from "../scripts/local-server.mjs";
@@ -9,6 +10,12 @@ import { createFamilyWorkflow } from "../scripts/lib/family-workflow.mjs";
 import { encryptedPayloadDigest } from "../scripts/lib/public-bytes.mjs";
 import { decryptFamily } from "../scripts/lib/family-crypto.mjs";
 import { readFile } from "node:fs/promises";
+
+// Public, fictional credentials used only by the isolated HTTPS tests.
+const testTls = {
+  cert: await readFile(new URL("./fixtures/tls/fictional.cert.pem", import.meta.url)),
+  key: await readFile(new URL("./fixtures/tls/fictional.key.pem", import.meta.url))
+};
 
 async function running(t, options = {}) {
   const project = await createProject(t, { site: true });
@@ -19,15 +26,20 @@ async function running(t, options = {}) {
     application.server.closeAllConnections();
     await new Promise(resolve => application.server.close(resolve));
   });
-  const origin = "http://127.0.0.1:" + application.server.address().port;
-  const status = await (await fetch(origin + "/api/status")).json();
-  return { ...project, ...application, origin, status, messages };
+  const scheme = options.tls ? "https://" : "http://";
+  const port = application.server.address().port;
+  const origin = scheme + "127.0.0.1:" + port;
+  const allowedOrigin = scheme + (options.host ?? "127.0.0.1") + ":" + port;
+  const status = JSON.parse((await rawRequest(origin, "/api/status", { headers: { Host: new URL(allowedOrigin).host } })).body);
+  return { ...project, ...application, origin, allowedOrigin, status, messages };
 }
 
 async function rawRequest(origin, requestPath, { method = "GET", headers = {}, body } = {}) {
   const url = new URL(origin);
   return new Promise((resolve, reject) => {
-    const request = http.request({ hostname: url.hostname, port: url.port, path: requestPath, method, headers }, response => {
+    const transport = url.protocol === "https:" ? https : http;
+    const request = transport.request({ hostname: url.hostname, port: url.port, path: requestPath, method, headers,
+      ...(transport === https ? { ca: testTls.cert, servername: "" } : {}) }, response => {
       const chunks = [];
       response.on("data", chunk => chunks.push(chunk));
       response.on("end", () => resolve({ status: response.statusCode, headers: response.headers, body: Buffer.concat(chunks).toString("utf8") }));
@@ -58,6 +70,50 @@ test("only manifest files are served; private/repository/encoded paths fail for 
       assert.equal(response.body.includes("fictional-canary"), false);
     }
   }
+});
+
+test("network listening is explicit and refuses HTTP or wildcard hosts", async () => {
+  for (const host of ["0.0.0.0", "localhost", "untrusted.example", "192.168.0.1.example"]) {
+    await assert.rejects(createLocalServer({ host }), { code: "INVALID_BIND_HOST" });
+  }
+  await assert.rejects(createLocalServer({ host: "192.0.2.10" }), { code: "HTTPS_REQUIRED" });
+});
+
+test("HTTPS network mode serves the viewer and saves only with its exact protected origin", async t => {
+  // Connect over loopback while sending the configured network Host, so CI does
+  // not depend on an available LAN interface or open a listener to its network.
+  const app = await running(t, { host: "192.0.2.10", tls: testTls });
+  const host = new URL(app.allowedOrigin).host;
+  const headers = { Host: host, Origin: app.allowedOrigin, "Content-Type": "application/json",
+    "X-Family-Local-Token": app.status.csrfToken };
+  const before = await hashes(app.paths);
+  assert.equal((await rawRequest(app.origin, "/", { headers: { Host: host } })).status, 200);
+  for (const file of ["/private/family.json", "/private/dev-tls/key.pem", "/.git/HEAD"]) {
+    assert.equal((await rawRequest(app.origin, file, { headers: { Host: host } })).status, 404);
+  }
+  const body = JSON.stringify({ password: PASSWORD, payloadDigest: app.status.payloadDigest });
+  for (const extra of [
+    { Host: "untrusted.example:" + app.server.address().port },
+    { Host: "127.0.0.1:" + app.server.address().port },
+    { Origin: app.allowedOrigin.replace("https:", "http:") },
+    { Origin: "https://untrusted.example" },
+    { Origin: "null" },
+    { "X-Family-Local-Token": "wrong" }
+  ]) {
+    const result = await rawRequest(app.origin, "/api/session", { method: "POST", headers: { ...headers, ...extra }, body });
+    assert.equal(result.status, 403);
+  }
+  assert.deepEqual(await hashes(app.paths), before);
+  const opened = await rawRequest(app.origin, "/api/session", { method: "POST", headers, body });
+  assert.equal(opened.status, 200);
+  const snapshot = JSON.parse(opened.body);
+  snapshot.nodes[0].data.birthday = "Fictional mobile correction";
+  const saved = await rawRequest(app.origin, "/api/save", { method: "POST", headers,
+    body: JSON.stringify({ nodes: snapshot.nodes, password: PASSWORD, expectedRevision: snapshot.privateRevision,
+      snapshotId: snapshot.snapshotId, operationId: "fictional-https-save" }) });
+  assert.equal(saved.status, 200);
+  assert.equal(JSON.parse(saved.body).ok, true);
+  assert.deepEqual(await decryptFamily(JSON.parse(await readFile(app.paths.encrypted, "utf8")), PASSWORD), snapshot.nodes);
 });
 
 test("Host, Origin, content type, token and unknown fields reject writes before changes", async t => {

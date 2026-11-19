@@ -2,8 +2,39 @@ const FRIENDLY_ERRORS = Object.freeze({
   400: "Check the suggestion details and try again.",
   403: "The submission access code is invalid.",
   409: "The public anchor catalog has changed. Start a new visual suggestion and try again.",
-  413: "This suggestion is too large to submit. Reduce the proposed branch and try again."
+  413: "This suggestion is too large to submit. Reduce the proposed branch and try again.",
+  429: "Too many attempts. Wait a minute before trying again."
 });
+let localSuggestionsEnabled = null;
+let localPhotosEnabled = false;
+let localProfilesEnabled = false;
+export function setProfileSuggestionsEnabled(value) { localProfilesEnabled = value === true; }
+export function supportsProfileSuggestions() { return localProfilesEnabled && localSuggestionsEnabled === true; }
+export function setLocalSuggestionsEnabled(value) { localSuggestionsEnabled = value === true; }
+export function setSuggestionPhotosEnabled(value) { localPhotosEnabled = value === true; }
+export function supportsSuggestionPhotos() { return localPhotosEnabled && localSuggestionsEnabled === true; }
+export async function loadPublicSuggestionStatus(fetchImpl = globalThis.fetch) {
+  const response = await fetchImpl("/api/public-status", { cache: "no-store", credentials: "omit", redirect: "error",
+    signal: AbortSignal.timeout(15000) });
+  if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) throw new Error("Suggestion status unavailable.");
+  const text = await response.text();
+  if (text.length > 4096) throw new Error("Invalid suggestion status.");
+  const status = JSON.parse(text);
+  if (status?.protocolVersion !== 2 || ["submissionCodeConfigured", "localSuggestionPhotos", "localProfileSuggestions"]
+    .some(key => typeof status[key] !== "boolean")) throw new Error("Invalid suggestion status.");
+  return status;
+}
+export async function uploadSuggestionPhoto(payload, fetchImpl = globalThis.fetch) {
+  if (!supportsSuggestionPhotos()) throw new SuggestionSubmissionError("Prilaganje fotografija trenutačno nije dostupno.", { code: "NOT_CONFIGURED" });
+  let response;
+  try { response = await fetchImpl("/api/suggestions/photos", { method: "POST", credentials: "omit", cache: "no-store", redirect: "error",
+    signal: AbortSignal.timeout(30000), headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); }
+  catch { throw new SuggestionSubmissionError("Slanje fotografije je prekinuto. Odabir je zadržan za ponovni pokušaj."); }
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new SuggestionSubmissionError(FRIENDLY_ERRORS[response.status] ?? "Fotografija se ne može poslati. Pokušaj ponovno.", { status: response.status });
+  if (result.ok !== true || !/^[a-f0-9]{64}$/.test(result.token ?? "")) throw new SuggestionSubmissionError("Odgovor za fotografiju nije valjan.");
+  return result;
+}
 export const MAX_SUBMISSION_BODY_BYTES = 64 * 1024;
 
 export class SuggestionSubmissionError extends Error {
@@ -16,6 +47,7 @@ export class SuggestionSubmissionError extends Error {
 }
 
 export function getSuggestionsApiUrl(config = globalThis.window?.FAMILY_TREE_CONFIG) {
+  if (localSuggestionsEnabled !== null) return localSuggestionsEnabled ? "/api/suggestions" : "";
   const value = config?.suggestionsApiUrl;
   if (typeof value !== "string" || !/^https:\/\/[^\s]+$/i.test(value)) return "";
   return value.replace(/\/+$/, "");
@@ -44,7 +76,8 @@ export function buildGraphSuggestionRequest(serializedDraft, {
   email = "",
   relationship = "",
   comment = "",
-  accessCode
+  accessCode,
+  photoTokens
 }) {
   if (!serializedDraft || serializedDraft.schemaVersion !== 1 || serializedDraft.type !== "graph") {
     throw new SuggestionSubmissionError("The visual draft is invalid.", { code: "INVALID_DRAFT" });
@@ -70,7 +103,8 @@ export function buildGraphSuggestionRequest(serializedDraft, {
     submitterName,
     email,
     relationship,
-    accessCode
+    accessCode,
+    ...(photoTokens?.length ? { photoTokens: photoTokens.map(({ token, caption }) => ({ token, caption })) } : {})
   };
 }
 

@@ -1,0 +1,6 @@
+{
+  "publicOrigin": "https://family.example-tailnet.ts.net",
+  "privateOrigin": "https://family.example-tailnet.ts.net:8443",
+  "publicPort": 4180,
+  "privatePort": 4181
+}

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { normalizeEditorExport, cloneNodes } from "../assets/viewer/editor-state.js";
 import { createCanonicalCardHtml, safeAvatarUrl } from "../assets/viewer/card-format.js";
-import { createLocalApiClient } from "../assets/editor/local-api.js";
+import { createLocalApiClient, supportsLocalEditing } from "../assets/editor/local-api.js";
 import { fixture } from "./helpers/project.mjs";
 
 test("editor normalization preserves privacy and extra data while repairing only missing relationship arrays", async () => {
@@ -60,4 +60,19 @@ test("local API rejects unprotected discovery and confines the capability to the
   assert.equal(requests[1].options.credentials, "omit");
   const invalid = createLocalApiClient({ fetchImpl: async () => new Response('{"localSave":true}', { headers: { "content-type": "application/json" } }) });
   await assert.rejects(invalid.discover(), error => error.code === "LOCAL_UNAVAILABLE");
+});
+
+test("network editing requires HTTPS on a private literal address; public hosts cannot receive local credentials", () => {
+  for (const hostname of ["localhost", "127.0.0.1"]) {
+    assert.equal(supportsLocalEditing({ protocol: "http:", hostname }), true);
+  }
+  for (const hostname of ["10.1.2.3", "172.16.0.1", "172.31.255.254", "192.168.0.167", "100.84.32.86"]) {
+    assert.equal(supportsLocalEditing({ protocol: "https:", hostname }), true);
+    assert.equal(supportsLocalEditing({ protocol: "http:", hostname }), false);
+  }
+  for (const hostname of ["example.com", "localhost.example", "192.168.0.167.example", "192.168.0.999",
+    "172.15.0.1", "172.32.0.1", "100.63.255.255", "100.128.0.1", "8.8.8.8", "0.0.0.0"]) {
+    assert.equal(supportsLocalEditing({ protocol: "https:", hostname }), false, hostname);
+  }
+  assert.equal(supportsLocalEditing({ protocol: "file:", hostname: "localhost" }), false);
 });

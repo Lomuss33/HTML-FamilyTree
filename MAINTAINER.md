@@ -1,5 +1,8 @@
 # Maintainer guide
 
+Priprema programskih promjena za Git, odvajanje stvarnih podataka i provjera
+indeksa opisani su u [docs/git-preparation.md](docs/git-preparation.md).
+
 ## Daily use
 
 Run `npm run dev` (`npm run local` also works) and open http://127.0.0.1:4173.
@@ -32,10 +35,10 @@ The old local source was backed up and moved to `private/family.json`. Only
 absent relationship arrays and explicit privacy metadata for the existing 15
 catalog entries were added. The public catalog labels were preserved exactly.
 
-The old ciphertext has deliberately not been replaced without the password.
-Unlock in the protected local app and click Save when it offers preparation.
-Then prepare the release locally. Until that happens, full real-data decryption
-and release readiness remain pending.
+An older migrated checkout may still need preparation of its ciphertext and
+public links. Unlock in the protected local app and click Save if it offers
+preparation. A successful owner Save prepares the corresponding artifacts;
+release readiness still needs the separate local, password-backed release check.
 
 Migration for another legacy checkout:
 

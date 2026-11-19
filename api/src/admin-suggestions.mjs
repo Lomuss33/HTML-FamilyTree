@@ -105,7 +105,7 @@ export function createAdminSuggestionsHandler({
   };
 }
 
-async function listSuggestions(event, store) {
+export async function listSuggestions(event, store) {
   const query = event?.queryStringParameters ?? {};
   rejectQueryKeys(query, new Set(["status", "type", "limit", "nextToken"]));
   const status = query.status ?? "pending";
@@ -121,7 +121,7 @@ async function listSuggestions(event, store) {
   };
 }
 
-function parseReviewRequest(event) {
+export function parseReviewRequest(event) {
   const body = decodeBody(event, MAX_PATCH_BODY_BYTES);
   let request;
   try {
@@ -147,7 +147,7 @@ function authorize(event, expectedClientId) {
   return { ok: true, subject: claims.sub };
 }
 
-function assertCurrentGraphRevision(item, revision) {
+export function assertCurrentGraphRevision(item, revision) {
   const payload = isPlainObject(item?.payload) ? item.payload : {};
   if (payload.anchorCatalogVersion !== revision.catalogVersion || payload.sourceRevision !== revision.sourceRevision) {
     throw new AdminRequestError(409, "Suggestion uses a stale family revision", "stale_revision");
@@ -362,7 +362,7 @@ function decodeNextToken(value) {
   }
 }
 
-function validateSuggestionId(value) {
+export function validateSuggestionId(value) {
   if (typeof value !== "string" || !SUGGESTION_ID_PATTERN.test(value)) {
     throw new AdminRequestError(400, "Invalid suggestion id", "invalid_id");
   }

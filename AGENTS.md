@@ -1,5 +1,10 @@
 # AWS Guidance for the new AWS experience
 
+## Communication preferences
+
+- Respond to this user exclusively in Croatian. Do not switch to Slovenian, Serbian, Bosnian or other similar languages.
+- The user selected help_level: HIGH earlier in this session. Do not ask for this preference again.
+
 This user has signed up for the new AWS experience. This experience lets you sign into AWS using a social provider and requires the following additional context.
 
 ## Context

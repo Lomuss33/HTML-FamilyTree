@@ -29,6 +29,7 @@ export function projectPaths(root = REPOSITORY_ROOT) {
   return {
     root,
     privateDir: path.join(root, "private"),
+    media: path.join(root, "private/media"),
     canonical: path.join(root, "private/family.json"),
     legacy: path.join(root, "data/family.private.json"),
     template: path.join(root, "data/family.template.json"),

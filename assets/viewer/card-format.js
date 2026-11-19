@@ -18,9 +18,10 @@ export function createCanonicalCardHtml(datum) {
   const data = person?.data ?? {};
   const name = [data["first name"], data["last name"]].filter(Boolean).join(" ") || "Unnamed person";
   const avatar = safeAvatarUrl(data.avatar);
+  const date = person?.publicView ? data.publicLifespan : data.birthday;
   return '<div class="card-inner card-rect personal-tree-card">'
     + (avatar ? '<img class="personal-tree-avatar" referrerpolicy="no-referrer" alt="" src="' + escapeHtml(avatar) + '">' : "")
     + '<strong>' + escapeHtml(name) + '</strong>'
-    + (data.birthday ? '<span>' + escapeHtml(data.birthday) + '</span>' : "")
+    + (date ? '<span>' + escapeHtml(date) + '</span>' : "")
     + '</div>';
 }

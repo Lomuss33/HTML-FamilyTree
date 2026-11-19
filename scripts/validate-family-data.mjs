@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { projectPaths, canonicalPath, safeErrorMessage } from "./lib/project-paths.mjs";
+import { profileDataIssues } from "../assets/viewer/profile-data.js";
 
 const RELATION_KEYS = Object.freeze(["parents", "children", "spouses"]);
 const SUPPORTED_GENDERS = new Set(["M", "F"]);
@@ -152,6 +153,7 @@ function validatePersonShape(person, personId, issues) {
   if (!isPlainObject(person.data)) {
     issues.push(`Person "${personId}" must have a data object.`);
   } else {
+    for (const issue of profileDataIssues(person.data)) issues.push(`Person "${personId}": ${issue}`);
     for (const field of SUPPORTED_STRING_FIELDS) {
       if (field in person.data && typeof person.data[field] !== "string") {
         issues.push(`Person "${personId}" field data["${field}"] must be a string.`);

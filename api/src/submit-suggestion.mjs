@@ -37,6 +37,7 @@ export async function handler(event) {
 
 export function createHandler({
   accessCode,
+  accessCodeDigest,
   retentionDays = 365,
   anchorAllowlist = { catalogVersion: "sha256:" + "0".repeat(64), anchorIds: [] },
   putSuggestion,
@@ -45,7 +46,8 @@ export function createHandler({
   createId = randomUUID
 }) {
   if (typeof putSuggestion !== "function") throw new Error("putSuggestion must be a function.");
-  const expectedCodeDigest = digestAccessCode(accessCode);
+  const expectedCodeDigest = accessCodeDigest ?? digestAccessCode(accessCode);
+  if (!Buffer.isBuffer(expectedCodeDigest) || expectedCodeDigest.length !== 32) throw new Error("Invalid submission-code digest.");
   const retentionNumber = Number(retentionDays);
   if (!Number.isFinite(retentionNumber) || retentionNumber <= 0) {
     throw new Error("SUGGESTION_RETENTION_DAYS must be a positive number.");
@@ -188,14 +190,14 @@ function cleanField(value, maxLength, required) {
   return cleaned;
 }
 
-function digestAccessCode(value) {
+export function digestAccessCode(value) {
   if (!value || typeof value !== "string") {
     throw new Error("SUBMISSION_ACCESS_CODE is not configured.");
   }
   return createHmac("sha256", "family-tree-submission-code-v1").update(value, "utf8").digest();
 }
 
-function hasValidAccessCode(value, expectedDigest) {
+export function hasValidAccessCode(value, expectedDigest) {
   if (!value || typeof value !== "string") return false;
   const receivedDigest = createHmac("sha256", "family-tree-submission-code-v1")
     .update(value, "utf8")

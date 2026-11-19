@@ -7,6 +7,12 @@ import path from "node:path";
 
 // Isolated fictional data for a browser check; never open the owner's private tree.
 const nodes = await fixture("valid-public-anchor.json");
+nodes.push(...await fixture("valid-multigeneration.json"));
+nodes.push(...await fixture("valid-spouses.json"));
+nodes.push(...await fixture("valid-nearest-family.json"));
+nodes.find(person => person.id === "spouse-b").rels.parents.push("spouse-parent");
+nodes.push({ id: "spouse-parent", data: { "first name": "Morgan", "last name": "PartnerFamily", birthday: "1945", gender: "F" },
+  rels: { parents: [], children: ["spouse-b"], spouses: [] } });
 for (const node of nodes) node.data.avatar = "";
 const { paths } = await createProject(null, { site: true, nodes });
 let faultMode = process.env.FAMILY_PREVIEW_SAVE_FAULT ?? "";

@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'self'">
-  <title>Family Archive</title>
-  <meta name="description" content="A private family tree unlocked with a shared password.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: blob:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <title>Obiteljsko stablo</title>
+  <meta name="description" content="Pregled odobrenih javnih podataka i zaštićen administratorski pristup obiteljskom stablu.">
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./assets/vendor/family-chart.css">
   <link rel="stylesheet" href="./assets/app.css">
@@ -13,41 +13,58 @@
 <body>
   <main class="shell">
     <section class="hero" id="lock-screen" aria-labelledby="lock-title">
-      <div class="hero-copy">
-        <p class="eyebrow">Private Family Archive</p>
-        <h1 id="lock-title">A lightweight family tree, unlocked locally.</h1>
-        <p class="lede">
-          This site runs entirely on GitHub Pages. The tree data stays encrypted until
-          you enter the shared password in your browser.
-        </p>
+      <div class="hero-copy" lang="hr">
+        <p class="eyebrow">Obiteljska arhiva</p>
+        <h1 id="lock-title">Obiteljsko stablo</h1>
+        <p class="lede">Pronađi svoje pretke, upoznaj obiteljske grane i istraži kako ste povezani.</p>
+        <div class="hero-actions">
+          <button id="public-tree-button" class="primary-button" type="button" disabled>Pregledaj javno stablo</button>
+          <button class="secondary-button guest-suggestion-button is-hidden" id="guest-suggest-button" type="button">Pošalji dopunu ili ispravak</button>
+        </div>
+        <p id="public-status" class="status-message" role="status" aria-live="polite">Učitavanje javnih podataka…</p>
+        <button id="public-retry" class="secondary-button" type="button" hidden>Pokušaj ponovno</button>
       </div>
 
-      <form class="unlock-card" id="unlock-form">
+      <details class="public-directory" id="public-directory" lang="hr">
+        <summary id="public-people-title">Pronađi javnu osobu</summary>
+        <p class="public-directory-note">Prikazuju se odobrene javne oznake osoba i veze između javnih osoba.</p>
         <label class="field">
-          <span>Family password</span>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            placeholder="Enter family password"
-            required
-          >
+          <span>Pretraži javno odobrene podatke</span>
+          <input id="public-search" type="search" autocomplete="off" spellcheck="false" maxlength="200" placeholder="Ime, godina ili grana" disabled>
         </label>
-        <button class="primary-button" type="submit" id="unlock-button">Enter Family Tree</button>
-        <p class="status-message" id="status-message" role="status" aria-live="polite"></p>
-        <div class="unlock-divider" aria-hidden="true"><span>or</span></div>
-        <button class="secondary-button guest-suggestion-button is-hidden" id="guest-suggest-button" type="button">Suggest a correction</button>
-      </form>
+        <ul id="public-results" aria-label="Javno odobrene osobe"></ul>
+      </details>
+
+      <details class="admin-entry" id="admin-entry" lang="hr">
+        <summary id="admin-unlock-title">Administratorski pristup</summary>
+        <form class="unlock-card" id="unlock-form" method="post" lang="hr" aria-labelledby="admin-unlock-title">
+          <label class="field">
+            <span>Postojeća obiteljska lozinka</span>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Unesi svoju lozinku"
+              required
+              disabled
+            >
+          </label>
+          <button class="primary-button" type="submit" id="unlock-button" disabled>Otvori privatno stablo</button>
+          <noscript><p>Za administratorski pristup potrebno je omogućiti JavaScript.</p></noscript>
+          <p class="status-message" id="status-message" role="status" aria-live="polite"></p>
+        </form>
+      </details>
     </section>
 
     <section class="tree-shell is-hidden" id="tree-shell" aria-live="polite">
       <header class="tree-toolbar">
         <div>
-          <h2>Family Tree <span class="title-meta">- Unlocked Session</span></h2>
+          <h2>Obiteljsko stablo <span class="title-meta" id="tree-session-label" lang="hr"></span></h2>
         </div>
         <div class="toolbar-meta">
           <p class="toolbar-message" id="tree-status"></p>
+          <button class="secondary-button" id="people-button" type="button" aria-haspopup="dialog" lang="hr">Pronađi osobu</button>
           <button class="secondary-button is-hidden" id="edit-button" type="button">Edit</button>
           <button class="secondary-button is-hidden" id="discard-button" type="button">Discard</button>
           <button class="primary-button is-hidden" id="save-button" type="button">Save</button>
@@ -65,6 +82,31 @@
       </div>
     </section>
   </main>
+
+  <dialog class="people-dialog" id="people-dialog" aria-labelledby="people-title" lang="hr">
+    <header class="people-heading">
+      <button id="people-back" class="secondary-button people-back" type="button" hidden>← Pretraga</button>
+      <h2 id="people-title">Osobe i obitelj</h2>
+      <button class="dialog-close" id="people-close" type="button" aria-label="Zatvori pregled osoba">×</button>
+    </header>
+    <div class="people-layout">
+      <section class="people-directory" aria-label="Pretraga svih osoba">
+        <label class="field">
+          <span>Traži po imenu, prezimenu, nadimku ili godini rođenja</span>
+          <input id="people-search" type="search" autocomplete="off" spellcheck="false" placeholder="Npr. Ana ili 1950" maxlength="200">
+        </label>
+        <button id="people-add" class="secondary-button" type="button" hidden>Dodaj osobu</button>
+        <div class="relationship-reference">
+          <p id="relationship-reference-label" role="status">Početna osoba nije odabrana.</p>
+          <button id="relationship-clear-reference" class="secondary-button" type="button" hidden>Ukloni početnu osobu</button>
+        </div>
+        <p id="people-count" class="status-message" role="status" aria-live="polite"></p>
+        <ul id="people-results" class="people-results" aria-label="Pronađene osobe"></ul>
+      </section>
+      <section id="person-detail" class="person-detail" aria-label="Podaci i obitelj odabrane osobe"></section>
+      <section id="family-edit-panel" class="family-edit-panel" aria-label="Dodavanje i povezivanje osobe" hidden></section>
+    </div>
+  </dialog>
 
   <dialog class="suggestion-dialog" id="suggestion-dialog" aria-labelledby="suggestion-title">
     <div class="suggestion-experience">
@@ -97,14 +139,22 @@
             <input id="suggestion-relationship" name="relationship" type="text" maxlength="120" placeholder="For example, cousin or grandchild">
           </label>
           <label class="field">
-            <span>Suggestion</span>
+            <span id="suggestion-message-label">Prijedlog</span>
             <textarea id="suggestion-message" name="message" maxlength="2000" rows="5" required placeholder="What should be added, corrected, or checked?"></textarea>
           </label>
+          <fieldset id="profile-change-fields" class="profile-change-fields" lang="hr" hidden></fieldset>
           <label class="field">
             <span>Submission access code</span>
             <input id="suggestion-code" name="accessCode" type="password" maxlength="200" autocomplete="off" required>
           </label>
           <p class="status-message" id="suggestion-status" role="status" aria-live="polite"></p>
+          <section id="text-photo-attachments" class="suggestion-photo-picker" lang="hr" hidden>
+            <label class="field"><span>Fotografije uz prijedlog (do 6, svaka do 8 MB)</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple>
+            </label>
+            <p>JPEG, PNG ili WebP. Prilozi ostaju privatni i čekaju administratorov pregled.</p>
+            <div class="suggestion-photo-list"></div><p class="suggestion-photo-status status-message" role="status"></p>
+          </section>
           <div class="suggestion-actions">
             <button class="secondary-button" type="button" id="suggestion-close">Cancel</button>
             <button class="primary-button" type="submit" id="suggestion-submit">Send suggestion</button>
@@ -274,6 +324,13 @@
                   </label>
                 </div>
                 <p class="status-message" id="visual-submit-status" role="status" aria-live="polite"></p>
+                <section id="visual-photo-attachments" class="suggestion-photo-picker" lang="hr" hidden>
+                  <label class="field"><span>Fotografije uz prijedlog (do 6, svaka do 8 MB)</span>
+                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple>
+                  </label>
+                  <p>JPEG, PNG ili WebP. Prilozi ostaju privatni i čekaju administratorov pregled.</p>
+                  <div class="suggestion-photo-list"></div><p class="suggestion-photo-status status-message" role="status"></p>
+                </section>
                 <div class="suggestion-actions visual-step-actions">
                   <button class="secondary-button" id="visual-submit-back" type="button">Back to preview</button>
                   <button class="primary-button" id="visual-submit-button" type="submit">Submit visual suggestion</button>
@@ -319,6 +376,18 @@
       </section>
 
       <section class="admin-workspace" id="admin-workspace" hidden>
+        <details id="local-suggestion-settings" class="local-suggestion-settings" lang="hr" hidden>
+          <summary>Kod za slanje prijedloga</summary>
+          <p>Podijeli ga samo s osobama kojima želiš dopustiti slanje. Kod ne otključava privatno stablo.</p>
+          <form id="local-code-form">
+            <label class="field"><span>Postavi ili zamijeni poseban kod</span>
+              <input id="local-submission-code" type="password" autocomplete="new-password" minlength="8" maxlength="200" required>
+            </label>
+            <button class="secondary-button" type="submit">Spremi kod</button>
+            <button class="secondary-button" id="local-disable-submissions" type="button">Isključi slanje prijedloga</button>
+          </form>
+          <p id="local-code-status" class="status-message" role="status"></p>
+        </details>
         <div class="admin-workspace-toolbar">
           <div class="admin-filter-row">
             <label class="field compact-field">
@@ -381,6 +450,7 @@
                 <h4>Submitted suggestion</h4>
                 <p id="admin-detail-message"></p>
               </section>
+              <section id="admin-profile-change" class="admin-profile-change" lang="hr" hidden></section>
 
               <section class="admin-graph-detail" id="admin-graph-detail" hidden>
                 <div class="admin-graph-heading">
@@ -407,6 +477,12 @@
                 </details>
               </section>
 
+              <section id="admin-photo-attachments" class="admin-photo-attachments" lang="hr" hidden>
+                <h4>Fotografije uz prijedlog</h4>
+                <p>Pregledaj izvornike, odobri prijedlog pa odaberi fotografije i osobe za galeriju. Glavna fotografija bira se u profilu osobe.</p>
+                <div id="admin-photo-list"></div>
+                <button id="admin-photos-to-draft" class="secondary-button" type="button" hidden>Dodaj odabrane fotografije u nacrt</button>
+              </section>
               <section class="admin-review-actions">
                 <label class="field">
                   <span>Reviewer note <em>(optional)</em></span>
@@ -417,6 +493,7 @@
                   <button class="secondary-button" id="admin-mark-pending" type="button">Mark pending</button>
                   <button class="danger-button" id="admin-reject" type="button">Reject</button>
                   <button class="primary-button" id="admin-accept" type="button">Accept</button>
+                  <button class="secondary-button" id="admin-add-to-draft" type="button" hidden>Dodaj u nacrt</button>
                   <button class="secondary-button" id="admin-download-patch" type="button" hidden>Download patch again</button>
                 </div>
               </section>

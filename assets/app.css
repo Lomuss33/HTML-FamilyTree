@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --bg: #efe5d0;
   --bg-deep: #d6c2a3;
   --panel: rgba(250, 246, 236, 0.88);
@@ -35,6 +36,174 @@
 .personal-tree-card strong { font-size: 15px; line-height: 1.2; }
 .personal-tree-card span { font-size: 12px; }
 .personal-tree-avatar { width: 34px; height: 34px; object-fit: cover; border-radius: 50%; }
+
+.people-dialog {
+  width: min(960px, calc(100vw - 24px));
+  height: min(760px, calc(100dvh - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel-strong);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.people-dialog[open] { display: flex; flex-direction: column; }
+.people-dialog::backdrop { background: rgba(10, 24, 16, 0.65); }
+.people-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.people-heading h2 { min-width: 0; flex: 1; }
+.people-back { display: none; }
+.people-layout { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); min-height: 0; flex: 1; }
+.people-directory { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; padding: 20px; border-right: 1px solid var(--border); }
+.people-directory .field input { font-size: 16px; }
+.people-results, .person-relatives ul { list-style: none; padding: 0; margin: 0; }
+.people-results { overflow-y: auto; min-height: 0; }
+.people-results li + li, .person-relatives li + li { margin-top: 7px; }
+.person-link { display: grid; gap: 4px; width: 100%; min-height: 52px; padding: 10px 12px; text-align: left; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: 12px; background: rgba(255, 255, 255, 0.6); color: var(--ink); cursor: pointer; }
+.person-link span { font-size: 0.8rem; color: var(--muted); }
+.person-link[aria-pressed="true"] { border-color: var(--accent); background: rgba(40, 85, 64, 0.1); }
+.person-link:focus-visible, .chart-root .card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.person-detail { min-width: 0; padding: 20px; overflow-y: auto; overflow-wrap: anywhere; }
+.person-detail h3 { margin: 0; font-size: 1.35rem; }
+.person-detail .primary-button { min-height: 44px; }
+.person-birth { margin: 8px 0 16px; color: var(--muted); }
+.person-relatives { margin-top: 20px; }
+.person-relatives h4 { margin: 0 0 8px; }
+.person-privacy { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.person-privacy summary { min-height: 44px; cursor: pointer; font-weight: 700; }
+.person-privacy form { display: grid; gap: 14px; }
+.person-profile-form { display: grid; gap: 16px; margin-top: 24px; }
+.person-profile-form details > .field, .person-profile-form details > p { margin: 12px 0; }
+.person-profile-form summary { min-height: 44px; cursor: pointer; font-weight: 700; }
+.person-profile-form input, .person-profile-form textarea { font-size: 16px; }
+.person-profile-form small { color: var(--muted); font-weight: 400; line-height: 1.4; }
+.residence-row { min-width: 0; margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 12px; display: grid; gap: 10px; }
+.person-detail dt { color: var(--muted); margin-top: 12px; font-size: 0.85rem; }
+.person-detail dd { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.person-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
+.person-gallery h4 { grid-column: 1 / -1; margin: 0; }
+.photo-tile { display: grid; gap: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); padding: 8px; cursor: pointer; min-width: 0; text-align: left; overflow-wrap: anywhere; }
+.photo-tile img, .photo-editor-item img { width: 100%; height: 130px; object-fit: contain; }
+.photo-tile span { font-size: 0.8rem; }
+.photo-editor-item { display: grid; gap: 8px; border: 1px solid var(--border); border-radius: 12px; margin-top: 12px; padding: 10px; }
+.photo-dialog { max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); border: 0; border-radius: 16px; background: var(--panel-strong); }
+.photo-dialog[open] { display: grid; gap: 12px; }
+.photo-dialog img { display: block; max-width: 100%; max-height: 75dvh; object-fit: contain; }
+.photo-dialog::backdrop { background: rgba(10, 24, 16, 0.8); }
+.person-portrait { display: block; width: 140px; height: 140px; object-fit: cover; border-radius: 16px; margin-bottom: 16px; }
+.local-suggestion-settings { padding: 16px; border: 1px solid var(--border); border-radius: 16px; margin-bottom: 16px; }
+.local-suggestion-settings summary { min-height: 44px; cursor: pointer; font-weight: 700; }
+.admin-workspace.has-local-settings { grid-template-rows: auto auto auto minmax(0, 1fr); }
+.local-suggestion-settings p { line-height: 1.5; }
+#local-code-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+#local-code-form .field { flex: 1 1 240px; }
+#local-code-form input { font-size: 16px; }
+#local-code-form button { min-height: 44px; }
+.person-profile-form button { min-height: 44px; }
+.person-privacy .field input { font-size: 16px; }
+.person-privacy-toggle { display: flex; gap: 10px; align-items: center; min-height: 44px; cursor: pointer; }
+.person-privacy-toggle input { width: 22px; height: 22px; flex: none; }
+.people-empty { color: var(--muted); line-height: 1.5; margin: 0; }
+.relationship-reference { display: grid; gap: 8px; min-width: 0; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; overflow-wrap: anywhere; }
+#relationship-reference-label { margin: 0; line-height: 1.4; font-size: 0.85rem; color: var(--muted); }
+.relationship-reference button { min-height: 44px; }
+.person-relationship { margin: 16px 0; padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+.person-relationship h4 { margin: 0 0 12px; }
+.person-relationship > button { min-height: 44px; }
+.person-relationship > p { margin: 12px 0 0; line-height: 1.5; }
+.relationship-path { list-style: none; margin: 16px 0 0; padding: 0; }
+.relationship-path li + li { margin-top: 12px; }
+.relationship-step { display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--muted); }
+.suggestion-photo-picker { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+.suggestion-photo-picker p { line-height: 1.5; font-size: 0.85rem; }
+.suggestion-photo-list, #admin-photo-list { display: grid; gap: 12px; min-width: 0; }
+.suggestion-photo-item, .admin-photo-item { display: grid; grid-template-columns: minmax(0, 120px) minmax(0, 1fr); gap: 10px; align-items: start; min-width: 0; overflow-wrap: anywhere; padding: 10px; border: 1px solid var(--border); border-radius: 12px; }
+.suggestion-photo-item img { width: 100%; height: 100px; object-fit: contain; }
+.suggestion-photo-item button { grid-column: 2; min-height: 44px; }
+.suggestion-photo-item input, .admin-photo-item select { min-width: 0; width: 100%; min-height: 44px; font-size: 16px; }
+.admin-photo-attachments { margin: 20px 0; }
+.admin-photo-attachments p { line-height: 1.5; }
+#admin-photos-to-draft { margin-top: 12px; min-height: 44px; }
+.profile-change-fields { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+.profile-change-fields legend { font-weight: 700; overflow-wrap: anywhere; }
+.profile-change-fields p, .admin-profile-change p { line-height: 1.5; }
+.profile-change-field { margin-top: 14px; min-width: 0; }
+.profile-change-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.profile-change-toggle input { width: 22px; height: 22px; flex: none; }
+.profile-change-input { margin-top: 8px; min-width: 0; }
+.profile-change-input input, .profile-change-input textarea { width: 100%; font-size: 16px; }
+.profile-change-input textarea { min-height: 100px; }
+.profile-change-residence { display: grid; gap: 10px; border: 1px solid var(--border); padding: 10px; margin: 8px 0; border-radius: 12px; }
+.profile-change-input button { min-height: 44px; }
+.admin-profile-field { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 12px 0; }
+.admin-profile-field dd { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 14px; line-height: 1.5; }
+
+.people-dialog[data-view="family"] .people-directory,
+.people-dialog[data-view="family"] .person-detail { display: none; }
+.people-dialog[data-view="family"] .people-back:not([hidden]) { display: inline-flex; align-items: center; min-height: 44px; }
+.family-edit-panel { min-width: 0; min-height: 0; grid-column: 1 / -1; padding: 20px; overflow-y: auto; overscroll-behavior: contain; }
+.family-edit-form { display: grid; gap: 16px; width: min(100%, 720px); margin-inline: auto; }
+.family-edit-form h3, .family-edit-form p { margin: 0; line-height: 1.5; }
+.family-edit-form fieldset { min-width: 0; display: grid; gap: 12px; margin: 0; padding: 12px; border: 1px solid var(--border); border-radius: 14px; }
+.family-edit-form legend { font-weight: 700; }
+.family-edit-form .field input, .family-edit-form .field select { font-size: 16px; }
+.family-person-picker { min-width: 0; display: grid; gap: 10px; }
+.family-selected-person { overflow-wrap: anywhere; color: var(--muted); }
+.family-person-results { min-width: 0; display: grid; gap: 8px; max-height: 26dvh; overflow-y: auto; padding: 2px; margin: 0; list-style: none; }
+.family-person-results .person-link { font: inherit; }
+.family-duplicate-warning { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--accent); border-radius: 14px; background: var(--panel); }
+.family-edit-summary { padding: 12px; border: 1px solid var(--border); border-radius: 12px; overflow-wrap: anywhere; }
+.family-edit-actions, .family-add-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.family-edit-actions button, .family-add-actions button { min-height: 44px; }
+.family-add-actions { margin-top: 20px; }
+.family-add-actions h4, .family-add-actions p { flex-basis: 100%; margin: 0; }
+
+@media (max-width: 650px) {
+  .has-profile-preview .tree-shell { height: calc(24dvh - var(--page-pad)); grid-template-rows: minmax(0, 1fr); gap: 0; }
+  .has-profile-preview .tree-toolbar { display: none; }
+  .people-dialog {
+    position: fixed;
+    inset: auto 0 0;
+    width: 100%;
+    max-width: 100%;
+    height: min(76dvh, 760px);
+    max-height: calc(100dvh - 80px);
+    margin: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 22px 22px 0 0;
+    border-bottom: 0;
+  }
+  .people-dialog::backdrop { background: rgba(10, 24, 16, 0.28); }
+  .people-layout { display: flex; flex-direction: column; overflow: hidden; }
+  .people-directory { border: 0; padding: 16px; }
+  .people-results { max-height: none; flex: 1; }
+  .person-detail { min-height: 0; flex: 1; padding: 16px; overscroll-behavior: contain; }
+  .family-edit-panel { flex: 1; padding: 16px; }
+  .people-dialog[data-view="profile"] .people-directory,
+  .people-dialog[data-view="search"] .person-detail { display: none; }
+  .people-back:not([hidden]) { display: inline-flex; align-items: center; min-height: 44px; }
+  .people-heading { padding: 12px 16px; }
+  .people-heading .dialog-close { width: 44px; min-width: 44px; height: 44px; }
+}
+
+.public-directory, .admin-entry { min-width: 0; padding: 0 18px; border: 1px solid var(--border); border-radius: 18px; }
+.public-directory > summary, .admin-entry > summary { min-height: 48px; padding: 14px 0; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+.public-directory > summary:focus-visible, .admin-entry > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+.public-directory > .field { margin-block: 14px; }
+.public-directory[open] { padding-bottom: 14px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.hero-actions > button { min-height: 48px; padding: 13px 22px; font-size: 0.9rem; }
+.hero-actions .guest-suggestion-button { width: auto; }
+.admin-entry .unlock-card { max-width: none; padding: 0 0 18px; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; animation: none; }
+.public-directory-note { margin: 0; color: var(--muted); line-height: 1.5; font-size: 0.85rem; }
+.public-directory .field input { font-size: 16px; }
+#public-results { display: grid; gap: 8px; list-style: none; padding: 2px; margin: 0; max-height: 34dvh; overflow-y: auto; }
+#public-results li { min-width: 0; }
+.public-person-link { padding: 12px 14px; border-radius: 14px; background: var(--panel); }
+.public-person-link:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+#public-results span { font-size: 0.85rem; color: var(--muted); }
+.public-directory .secondary-button { justify-self: start; }
 
 * {
   box-sizing: border-box;
@@ -108,17 +277,18 @@ body.is-tree-mode .shell {
 }
 
 .hero {
+  width: min(100%, 720px);
   min-height: calc(100dvh - var(--page-pad) - var(--page-pad));
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 410px);
-  gap: clamp(28px, 6vw, 112px);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   align-items: center;
   align-content: center;
   padding-block: var(--space-3);
 }
 
 .hero-copy {
-  max-width: 44rem;
+  max-width: none;
   padding-block: var(--space-2);
   animation: rise-in 450ms ease-out;
 }
@@ -313,24 +483,6 @@ h2 {
 
 .status-message.is-error {
   color: #972d2d;
-}
-
-.unlock-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-block: 2px;
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1;
-}
-
-.unlock-divider::before,
-.unlock-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: rgba(31, 42, 34, 0.14);
 }
 
 .guest-suggestion-button,
@@ -1512,7 +1664,7 @@ h2 {
   }
 
   .hero {
-    grid-template-columns: minmax(0, 1.3fr) minmax(390px, 440px);
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1524,7 +1676,7 @@ h2 {
   }
 
   .hero-copy {
-    max-width: 38rem;
+    max-width: none;
   }
 
   h1 {
@@ -1692,6 +1844,9 @@ h2 {
   .hero-copy {
     padding-top: 0;
   }
+
+  .hero-actions { flex-direction: column; }
+  .hero-actions > button, .hero-actions .guest-suggestion-button { width: 100%; }
 
   h1 {
     max-width: 12ch;
