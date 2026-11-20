@@ -10,6 +10,7 @@ import { createCanonicalCardHtml } from "./viewer/card-format.js";
 import { createPersonBrowser, personName } from "./viewer/person-browser.js";
 import { loadPublicAnchorCatalog, filterPublicAnchors } from "./suggestions/public-anchor-catalog.js";
 import { createPublicTree } from "./viewer/public-tree.js";
+import { setupTreeNavigation } from "./viewer/tree-navigation.js";
 import { createPhotoClient } from "./viewer/photo-client.js";
 import { createLocalReviewClients } from "./admin/local-review.js";
 import { applyFamilyEdit, FamilyEditError } from "./editor/family-edit.js";
@@ -454,6 +455,7 @@ function renderTree() {
     state.editor = editor;
   }
   chart.updateTree({ initial: true });
+  setupTreeNavigation(chartRoot, chart);
   if (state.editor && state.openEditorOnRender) {
     state.openEditorOnRender = false; state.editor.openFormWithId();
   }

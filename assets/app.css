@@ -17,7 +17,7 @@
   --space-4: clamp(24px, 3vw, 52px);
   --entrance-max: 1240px;
   --tree-max: 1760px;
-  --control-height: 44px;
+  --control-height: 46px;
 }
 
 .f3 .personal-tree-card {
@@ -2052,3 +2052,68 @@ h2 {
     transition-duration: 1ms !important;
   }
 }
+
+/* Quiet navigation chrome, shared by mouse and touch. */
+.tree-stage { position: relative; }
+.tree-view-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 18px;
+  background: #f8f2e5;
+  box-shadow: 0 8px 28px #0003;
+  color: var(--ink);
+}
+.tree-view-controls button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 24px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.tree-view-controls #tree-fit { padding-inline: 14px; font-size: 13px; font-weight: 700; border-left: 1px solid var(--border); }
+.tree-view-controls output { min-width: 45px; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.tree-view-controls button:disabled { opacity: 0.35; cursor: default; }
+.tree-view-controls button:active { background: #28554024; }
+.tree-view-controls button:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.tree-gesture-hint { position: absolute; left: 20px; bottom: 20px; margin: 0; display: grid; gap: 5px; color: #e1e8df; font-size: 12px; pointer-events: none; }
+.tree-gesture-hint > span:last-child { color: #aebeb3; }
+.touch-hint { display: none; }
+.chart-root #f3Canvas { cursor: grab; touch-action: none; }
+.chart-root #f3Canvas:active { cursor: grabbing; }
+.chart-root .card { border-radius: 16px; box-shadow: 0 5px 16px #0003; transition: box-shadow 160ms ease, filter 160ms ease; }
+.chart-root .card:active { filter: brightness(1.12); }
+.primary-button, .secondary-button, .danger-button { min-height: var(--control-height); touch-action: manipulation; }
+.primary-button:active, .secondary-button:active, .danger-button:active { transform: scale(0.97); }
+.people-results, .person-detail { overscroll-behavior: contain; }
+@media (hover: hover) and (pointer: fine) {
+  .tree-view-controls button:not(:disabled):hover { background: #28554014; }
+  .chart-root .card:hover { box-shadow: 0 0 0 3px #f8f2e5a6, 0 8px 24px #0005; }
+  .person-link:hover, .photo-tile:hover { border-color: var(--accent); background: #fffaf1; }
+}
+@media (pointer: coarse) {
+  .mouse-hint { display: none; }
+  .touch-hint { display: inline; }
+  .field input, .field select, .field textarea { font-size: 16px; }
+}
+@media (max-width: 700px) {
+  .tree-view-controls { right: 10px; bottom: 10px; }
+  .tree-gesture-hint { top: 12px; left: 14px; bottom: auto; font-size: 11px; }
+  .tree-gesture-hint > span:last-child { display: none; }
+}
+.has-profile-preview .tree-view-controls, .has-profile-preview .tree-gesture-hint { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .chart-root .card, .primary-button, .secondary-button, .danger-button { transition: none; }
+}
+.tree-stage > .chart-root { isolation: isolate; }
+.tree-view-controls, .tree-gesture-hint { z-index: 1; }

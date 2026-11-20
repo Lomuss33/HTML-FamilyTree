@@ -25,6 +25,7 @@ export const PUBLIC_FILES = Object.freeze([
   "assets/viewer/person-browser.js",
   "assets/viewer/relationship-path.js",
   "assets/viewer/public-tree.js",
+  "assets/viewer/tree-navigation.js",
   "assets/viewer/profile-data.js", "assets/viewer/profile-editor.js",
   "assets/viewer/media-data.js", "assets/viewer/photo-client.js",
   "data/family.enc.json", "data/family.anchors.public.json"

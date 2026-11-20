@@ -67,5 +67,132 @@
       "id": "fec34b29-1686-47a3-a57e-dda0256c012b",
       "displayLabel": "Matija"
     }
+  ],
+  "relationships": [
+    {
+      "from": "09f4832b-7cd9-4794-923c-2706ac34384b",
+      "to": "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+      "type": "parentOf"
+    },
+    {
+      "from": "09f4832b-7cd9-4794-923c-2706ac34384b",
+      "to": "977c405a-8b9b-49ad-b72a-e5c282528019",
+      "type": "parentOf"
+    },
+    {
+      "from": "17379053-a9f4-4637-ac96-e8ef6ec4f64f",
+      "to": "0",
+      "type": "parentOf"
+    },
+    {
+      "from": "17379053-a9f4-4637-ac96-e8ef6ec4f64f",
+      "to": "1c3f5c4f-ef87-40b2-9715-e7734705c2ad",
+      "type": "parentOf"
+    },
+    {
+      "from": "17379053-a9f4-4637-ac96-e8ef6ec4f64f",
+      "to": "b6951ec7-dff1-4281-8030-79699f89d2b5",
+      "type": "parentOf"
+    },
+    {
+      "from": "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+      "to": "0",
+      "type": "parentOf"
+    },
+    {
+      "from": "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+      "to": "1c3f5c4f-ef87-40b2-9715-e7734705c2ad",
+      "type": "parentOf"
+    },
+    {
+      "from": "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+      "to": "b6951ec7-dff1-4281-8030-79699f89d2b5",
+      "type": "parentOf"
+    },
+    {
+      "from": "9d1d2211-04e5-4653-bdfa-377e569756db",
+      "to": "17379053-a9f4-4637-ac96-e8ef6ec4f64f",
+      "type": "parentOf"
+    },
+    {
+      "from": "9d1d2211-04e5-4653-bdfa-377e569756db",
+      "to": "20f2e52f-c378-41fc-990c-4477d477dff2",
+      "type": "parentOf"
+    },
+    {
+      "from": "9d1d2211-04e5-4653-bdfa-377e569756db",
+      "to": "39bfa536-0cb9-4918-9492-af0971897f4a",
+      "type": "parentOf"
+    },
+    {
+      "from": "9d1d2211-04e5-4653-bdfa-377e569756db",
+      "to": "7b32403d-8253-4366-855a-c2c38d4212ca",
+      "type": "parentOf"
+    },
+    {
+      "from": "9d1d2211-04e5-4653-bdfa-377e569756db",
+      "to": "ca7b0244-0d27-4915-a30f-8bd754206800",
+      "type": "parentOf"
+    },
+    {
+      "from": "9d1d2211-04e5-4653-bdfa-377e569756db",
+      "to": "cc55fb39-11c6-4b88-bc1e-d1ecf0f5dcbb",
+      "type": "parentOf"
+    },
+    {
+      "from": "bd408427-5def-40bd-a874-8d2218d946d3",
+      "to": "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+      "type": "parentOf"
+    },
+    {
+      "from": "bd408427-5def-40bd-a874-8d2218d946d3",
+      "to": "977c405a-8b9b-49ad-b72a-e5c282528019",
+      "type": "parentOf"
+    },
+    {
+      "from": "fec34b29-1686-47a3-a57e-dda0256c012b",
+      "to": "17379053-a9f4-4637-ac96-e8ef6ec4f64f",
+      "type": "parentOf"
+    },
+    {
+      "from": "fec34b29-1686-47a3-a57e-dda0256c012b",
+      "to": "20f2e52f-c378-41fc-990c-4477d477dff2",
+      "type": "parentOf"
+    },
+    {
+      "from": "fec34b29-1686-47a3-a57e-dda0256c012b",
+      "to": "39bfa536-0cb9-4918-9492-af0971897f4a",
+      "type": "parentOf"
+    },
+    {
+      "from": "fec34b29-1686-47a3-a57e-dda0256c012b",
+      "to": "7b32403d-8253-4366-855a-c2c38d4212ca",
+      "type": "parentOf"
+    },
+    {
+      "from": "fec34b29-1686-47a3-a57e-dda0256c012b",
+      "to": "ca7b0244-0d27-4915-a30f-8bd754206800",
+      "type": "parentOf"
+    },
+    {
+      "from": "fec34b29-1686-47a3-a57e-dda0256c012b",
+      "to": "cc55fb39-11c6-4b88-bc1e-d1ecf0f5dcbb",
+      "type": "parentOf"
+    },
+    {
+      "from": "09f4832b-7cd9-4794-923c-2706ac34384b",
+      "to": "bd408427-5def-40bd-a874-8d2218d946d3",
+      "type": "spouseOf"
+    },
+    {
+      "from": "17379053-a9f4-4637-ac96-e8ef6ec4f64f",
+      "to": "51f85066-9b5d-4c51-8a0a-1fa4e0c683d3",
+      "type": "spouseOf"
+    },
+    {
+      "from": "9d1d2211-04e5-4653-bdfa-377e569756db",
+      "to": "fec34b29-1686-47a3-a57e-dda0256c012b",
+      "type": "spouseOf"
+    }
   ]
 }
